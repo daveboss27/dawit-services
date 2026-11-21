@@ -7,6 +7,7 @@ import {
   ArrowRight, MapPin, Award, Globe, ExternalLink, 
   Send, CheckCircle2, AlertCircle, HelpCircle, Sparkles, Cpu
 } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 export default function Home() {
   const [lang, setLang] = useState<'AM' | 'EN' | 'TI' | 'AO'>('AM');
@@ -263,8 +264,25 @@ export default function Home() {
 
   const currentT = t[lang];
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const { error } = await supabase
+      .from('bookings')
+      .insert([
+        {
+          full_name: fullName,
+          phone: phone,
+          selected_service: selectedService,
+          tx_ref: txRef,
+        },
+      ]);
+
+    if (error) {
+      alert('Booking failed: ' + error.message);
+      return;
+    }
+
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
