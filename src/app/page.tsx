@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ServiceRequestForm from './components/ServiceRequestForm';
 import {
@@ -33,6 +33,12 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+const HERO_BACKGROUNDS = [
+  { src: '/hero-1.jpg', alt: 'Dawit Tesfay hero background 1' },
+  { src: '/hero-2.jpg', alt: 'Dawit Tesfay hero background 2' },
+  { src: '/hero-3.jpg', alt: 'Dawit Tesfay hero background 3' },
+];
+
 export default function HomePage() {
   const [lang, setLang] = useState<LangKey>('am');
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,7 +46,35 @@ export default function HomePage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
   const c = SITE_CONTENT[lang];
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+      if (event.matches) {
+        setActiveSlide(0);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const intervalId = window.setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % HERO_BACKGROUNDS.length);
+    }, 5500);
+
+    return () => window.clearInterval(intervalId);
+  }, [prefersReducedMotion]);
 
   const openRequestWithService = (service: ServiceKey) => {
     setActiveService(service);
@@ -142,18 +176,48 @@ export default function HomePage() {
       </div>
 
       <main>
-        <section className="border-b border-slate-800/80 py-14 sm:py-20 px-4 sm:px-6">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-8 space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3.5 py-1 text-xs font-semibold text-blue-300">
+        {/* 1. FULL-BLEED HERO WITH 3-PHOTO CROSSFADE BACKGROUND, OVERLAY, AND FOREGROUND CONTENT */}
+        <section className="relative overflow-hidden border-b border-slate-800/80 min-h-[480px] sm:min-h-[540px] flex items-center py-16 sm:py-24 px-4 sm:px-6">
+          {/* LAYER 1: ROTATING BACKGROUND PHOTO CAROUSEL (ONE ACTIVE AT A TIME, SMOOTH FADE) */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-slate-950">
+            {HERO_BACKGROUNDS.map((photo, index) => {
+              const isCurrent = index === activeSlide;
+              return (
+                <img
+                  key={photo.src}
+                  src={photo.src}
+                  alt={photo.alt}
+                  loading={index === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={index === 0 ? 'high' : 'auto'}
+                  decoding={index === 0 ? 'sync' : 'async'}
+                  className={`absolute inset-0 h-full w-full object-cover object-top sm:object-[50%_20%] ${
+                    prefersReducedMotion
+                      ? 'transition-none'
+                      : 'transition-opacity duration-1000 ease-in-out'
+                  } ${isCurrent ? 'opacity-100' : 'opacity-0'}`}
+                />
+              );
+            })}
+          </div>
+
+          {/* LAYER 2: SUBTLE DARK SEMI-TRANSPARENT OVERLAY FOR READABILITY */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/65 to-slate-950/50"
+          />
+
+          {/* LAYER 3: FIXED HERO TEXT & INTERACTIVE BUTTONS */}
+          <div className="relative z-20 max-w-6xl w-full mx-auto">
+            <div className="max-w-3xl space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/65 backdrop-blur-xs px-3.5 py-1 text-xs font-semibold text-blue-300">
                 <span>{c.heroBadge}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight drop-shadow-xs">
                 {c.heroHeadline}
               </h1>
 
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-3xl">
+              <p className="text-base sm:text-lg text-slate-100/95 leading-relaxed max-w-3xl drop-shadow-xs">
                 {c.heroSubtext}
               </p>
 
@@ -161,30 +225,22 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => openRequestWithService('application')}
-                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition cursor-pointer"
+                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-md transition cursor-pointer"
                 >
                   {c.requestBtn}
                 </button>
                 <a
                   href="#services"
-                  className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 text-sm font-bold transition"
+                  className="px-5 py-3 rounded-xl bg-slate-900/85 hover:bg-slate-800/95 border border-slate-600/80 text-slate-100 text-sm font-bold backdrop-blur-xs transition"
                 >
                   {c.exploreBtn}
                 </a>
               </div>
             </div>
-
-            <div className="lg:col-span-4 flex flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-center space-y-3">
-              <img
-                src="/dawit-profile.jpg"
-                alt="Dawit Tesfay"
-                className="w-36 h-36 sm:w-40 sm:h-40 rounded-2xl object-cover border border-slate-700 bg-slate-950"
-              />
-              <p className="text-base font-extrabold text-white">Dawit Tesfay</p>
-            </div>
           </div>
         </section>
 
+        {/* 2. ONLY THREE SERVICE CATEGORIES */}
         <section id="services" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="max-w-2xl space-y-2">
@@ -244,6 +300,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 3. HOW THE SERVICE WORKS */}
         <section id="how-it-works" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-950">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="max-w-2xl space-y-2">
@@ -266,6 +323,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 4. 200 ETB SERVICE DEPOSIT POLICY */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
           <div className="max-w-4xl mx-auto rounded-2xl border border-blue-500/40 bg-slate-900 p-6 sm:p-8 space-y-4">
             <div className="inline-block text-xs font-bold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full">
@@ -282,6 +340,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 6. TRANSPARENT PRICING */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-5xl mx-auto space-y-6">
             <div className="space-y-2 max-w-2xl">
@@ -316,6 +375,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 5. REUSABLE SERVICE REQUEST FORM SECTION */}
         <section id="request-form" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/30">
           <div className="max-w-3xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="space-y-1.5">
@@ -326,6 +386,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 7. ABOUT DAWIT (NON-REPETITIVE PROFILE DETAILS) */}
         <section id="about" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/80 p-6 sm:p-8 space-y-3">
             <div className="text-xs font-bold uppercase tracking-wider text-blue-400">{c.aboutBadge}</div>
@@ -335,6 +396,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 8. TRUST SECTION */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-6xl mx-auto space-y-8">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.trustHeading}</h2>
@@ -355,6 +417,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 9. IMPORTANT DISCLAIMER */}
         <section className="py-14 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
           <div className="max-w-4xl mx-auto rounded-2xl border border-amber-500/30 bg-slate-900 p-6 space-y-3">
             <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
@@ -369,6 +432,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 13. FAQ */}
         <section id="faq" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-3xl mx-auto space-y-6">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.faqHeading}</h2>
@@ -404,6 +468,7 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* 11. CONTACT SECTION */}
         <section id="contact" className="py-16 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
