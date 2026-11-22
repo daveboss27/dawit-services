@@ -251,13 +251,25 @@ function pickTranslation<T extends { lang_code: string }>(
   );
 }
 
+function getInitialPostParam(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('post')?.trim() || null;
+}
+
 export default function HubPage() {
+  const initialPostParam = getInitialPostParam();
+
   const [lang, setLang] = useState<LangCode>('am');
-  const [activeTab, setActiveTab] = useState<'all' | 'news' | 'opps'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'news' | 'opps'>(
+    initialPostParam ? 'news' : 'all'
+  );
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
-  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>(() =>
+    initialPostParam ? { [initialPostParam]: true } : {}
+  );
+  const [highlightedPostId] = useState<string | null>(initialPostParam);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [savedOppIds, setSavedOppIds] = useState<string[]>([]);
@@ -268,16 +280,6 @@ export default function HubPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const t = UI_COPY[lang];
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const postParam = params.get('post')?.trim() || null;
-    if (postParam) {
-      setHighlightedPostId(postParam);
-      setActiveTab('news');
-      setExpandedPosts((prev) => ({ ...prev, [postParam]: true }));
-    }
-  }, []);
 
   useEffect(() => {
     if (loading || !highlightedPostId) return;
@@ -301,79 +303,102 @@ export default function HubPage() {
     }
   }, []);
 
-  const loadHubData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const currentUid = user?.id ?? null;
-      setUserId(currentUid);
-
-      const [catsRes, postsRes, oppsRes] = await Promise.all([
-        supabase
-          .from('hub_categories')
-          .select('id, slug, name_en, name_am, name_ti, name_om')
-          .order('sort_order'),
-        supabase
-          .from('hub_posts')
-          .select('*')
-          .eq('status', 'published')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('opportunities')
-          .select(
-            'id, opportunity_type, organization, country, location, application_url, deadline_at, is_active, created_at, opportunity_translations(lang_code, title, description)'
-          )
-          .eq('is_active', true)
-          .order('created_at', { ascending: false }),
-      ]);
-
-      if (!catsRes.error && catsRes.data) {
-        setCategories(catsRes.data as HubCategory[]);
-      }
-      if (!postsRes.error && postsRes.data) {
-        const { data: trData } = await supabase
-          .from('hub_post_translations')
-          .select('post_id, lang_code, title, summary, body, is_verified_translation');
-        const grouped: Record<string, HubPostTranslation[]> = {};
-        for (const row of trData || []) {
-          const r = row as HubPostTranslation & { post_id: string };
-          if (!grouped[r.post_id]) grouped[r.post_id] = [];
-          grouped[r.post_id].push({
-            lang_code: r.lang_code,
-            title: r.title,
-            summary: r.summary,
-            body: r.body,
-            is_verified_translation: r.is_verified_translation,
-          });
-        }
-        setPosts(
-          (postsRes.data as HubPostItem[]).map((p) => ({
-            ...p,
-            hub_post_translations: grouped[p.id] || [],
-          }))
-        );
-      }
-      if (!oppsRes.error && oppsRes.data) {
-        setOpportunities(oppsRes.data as OpportunityItem[]);
-      }
-
-      await loadSavedOpportunities(currentUid);
-    } finally {
-      setLoading(false);
-    }
-  }, [loadSavedOpportunities]);
-
   useEffect(() => {
-    loadHubData();
-  }, [loadHubData]);
+    let active = true;
+
+    const fetchHubData = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!active) return;
+
+        const currentUid = user?.id ?? null;
+        setUserId(currentUid);
+
+        const [catsRes, postsRes, oppsRes] = await Promise.all([
+          supabase
+            .from('hub_categories')
+            .select('id, slug, name_en, name_am, name_ti, name_om')
+            .order('sort_order'),
+          supabase
+            .from('hub_posts')
+            .select('*')
+            .eq('status', 'published')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('opportunities')
+            .select(
+              'id, opportunity_type, organization, country, location, application_url, deadline_at, is_active, created_at, opportunity_translations(lang_code, title, description)'
+            )
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+        ]);
+
+        if (!active) return;
+
+        if (!catsRes.error && catsRes.data) {
+          setCategories(catsRes.data as HubCategory[]);
+        }
+        if (!postsRes.error && postsRes.data) {
+          const { data: trData } = await supabase
+            .from('hub_post_translations')
+            .select('post_id, lang_code, title, summary, body, is_verified_translation');
+          if (!active) return;
+
+          const grouped: Record<string, HubPostTranslation[]> = {};
+          for (const row of trData || []) {
+            const r = row as HubPostTranslation & { post_id: string };
+            if (!grouped[r.post_id]) grouped[r.post_id] = [];
+            grouped[r.post_id].push({
+              lang_code: r.lang_code,
+              title: r.title,
+              summary: r.summary,
+              body: r.body,
+              is_verified_translation: r.is_verified_translation,
+            });
+          }
+          setPosts(
+            (postsRes.data as HubPostItem[]).map((p) => ({
+              ...p,
+              hub_post_translations: grouped[p.id] || [],
+            }))
+          );
+        }
+        if (!oppsRes.error && oppsRes.data) {
+          setOpportunities(oppsRes.data as OpportunityItem[]);
+        }
+
+        if (currentUid) {
+          const { data: savedData, error: savedErr } = await supabase
+            .from('saved_opportunities')
+            .select('opportunity_id')
+            .eq('user_id', currentUid);
+          if (active && !savedErr && savedData) {
+            setSavedOppIds(
+              (savedData as { opportunity_id: string }[]).map((r) => r.opportunity_id)
+            );
+          }
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void fetchHubData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUid = session?.user?.id ?? null;
       setUserId(nextUid);
-      loadSavedOpportunities(nextUid);
+      void loadSavedOpportunities(nextUid);
     });
 
     return () => {
@@ -621,120 +646,122 @@ export default function HubPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Editorial Stories Column */}
             {showNews && (
-              <div
-                className={`${showOpps ? 'lg:col-span-7' : 'lg:col-span-12'} space-y-6`}
-              >
-                {leadPost && (() => {
-                  const tr = pickTranslation(leadPost.hub_post_translations, lang);
-                  const media = getHubPostMedia(leadPost);
-                  const isHighlighted = highlightedPostId === leadPost.id;
-                  const expanded = !!expandedPosts[leadPost.id] || isHighlighted;
-                  const body = tr?.body || '';
-                  const shortBody = body.length > 340 ? `${body.slice(0, 340).trim()}...` : body;
+              <div className={`${showOpps ? 'lg:col-span-7' : 'lg:col-span-12'} space-y-6`}>
+                {leadPost &&
+                  (() => {
+                    const tr = pickTranslation(leadPost.hub_post_translations, lang);
+                    const media = getHubPostMedia(leadPost);
+                    const isHighlighted = highlightedPostId === leadPost.id;
+                    const expanded = !!expandedPosts[leadPost.id] || isHighlighted;
+                    const body = tr?.body || '';
+                    const shortBody =
+                      body.length > 340 ? `${body.slice(0, 340).trim()}...` : body;
 
-                  return (
-                    <article
-                      id={`post-${leadPost.id}`}
-                      className={`bg-white border border-t-4 border-t-red-700 p-6 sm:p-8 space-y-4 shadow-xs transition ${
-                        isHighlighted
-                          ? 'border-amber-500 ring-2 ring-amber-400 bg-amber-50/30'
-                          : 'border-slate-200'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <span className="text-red-700">{t.leadHeadline}</span>
-                          {isHighlighted && (
-                            <span className="bg-amber-400 text-slate-950 px-2 py-0.5 font-black">
-                              {t.highlightedTag}
-                            </span>
-                          )}
-                          {leadPost.is_breaking && (
-                            <span className="bg-red-700 text-white px-2 py-0.5">
-                              {t.priorityTag}
-                            </span>
-                          )}
-                          {leadPost.verification_label && (
-                            <span className="inline-flex items-center gap-1 text-emerald-800 normal-case font-semibold">
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              {leadPost.verification_label}
-                            </span>
-                          )}
+                    return (
+                      <article
+                        id={`post-${leadPost.id}`}
+                        className={`bg-white border border-t-4 border-t-red-700 p-6 sm:p-8 space-y-4 shadow-xs transition ${
+                          isHighlighted
+                            ? 'border-amber-500 ring-2 ring-amber-400 bg-amber-50/30'
+                            : 'border-slate-200'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-700">{t.leadHeadline}</span>
+                            {isHighlighted && (
+                              <span className="bg-amber-400 text-slate-950 px-2 py-0.5 font-black">
+                                {t.highlightedTag}
+                              </span>
+                            )}
+                            {leadPost.is_breaking && (
+                              <span className="bg-red-700 text-white px-2 py-0.5">
+                                {t.priorityTag}
+                              </span>
+                            )}
+                            {leadPost.verification_label && (
+                              <span className="inline-flex items-center gap-1 text-emerald-800 normal-case font-semibold">
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                                {leadPost.verification_label}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-slate-500 font-medium normal-case">
+                            {new Date(
+                              leadPost.publish_at || leadPost.created_at
+                            ).toLocaleDateString()}
+                          </span>
                         </div>
-                        <span className="text-slate-500 font-medium normal-case">
-                          {new Date(leadPost.publish_at || leadPost.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
 
-                      <h2 className="text-2xl sm:text-3xl font-black text-slate-950 leading-tight">
-                        {tr?.title || 'Untitled Dispatch'}
-                      </h2>
+                        <h2 className="text-2xl sm:text-3xl font-black text-slate-950 leading-tight">
+                          {tr?.title || 'Untitled Dispatch'}
+                        </h2>
 
-                      {tr?.summary && (
-                        <p className="text-base font-semibold text-slate-800 leading-relaxed">
-                          {tr.summary}
-                        </p>
-                      )}
+                        {tr?.summary && (
+                          <p className="text-base font-semibold text-slate-800 leading-relaxed">
+                            {tr.summary}
+                          </p>
+                        )}
 
-                      {media.url && (
-                        <div className="border border-slate-200 bg-slate-950 p-2">
-                          {media.isVideo ? (
-                            <video
-                              src={media.url}
-                              controls
-                              playsInline
-                              preload="metadata"
-                              className="w-full max-h-96 object-contain"
-                            />
+                        {media.url && (
+                          <div className="border border-slate-200 bg-slate-950 p-2">
+                            {media.isVideo ? (
+                              <video
+                                src={media.url}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                className="w-full max-h-96 object-contain"
+                              />
+                            ) : (
+                              <img
+                                src={media.url}
+                                alt={tr?.title || 'Post media'}
+                                className="w-full max-h-96 object-contain"
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {body && (
+                          <p className="text-sm sm:text-base text-slate-600 leading-relaxed whitespace-pre-line">
+                            {expanded ? body : shortBody}
+                          </p>
+                        )}
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                          {body.length > 340 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedPosts((prev) => ({
+                                  ...prev,
+                                  [leadPost.id]: !prev[leadPost.id],
+                                }))
+                              }
+                              className="text-red-700 hover:text-red-900 cursor-pointer"
+                            >
+                              {expanded ? t.collapse : t.readMore}
+                            </button>
                           ) : (
-                            <img
-                              src={media.url}
-                              alt={tr?.title || 'Post media'}
-                              className="w-full max-h-96 object-contain"
-                            />
+                            <span className="text-slate-500">{leadPost.source_name || ''}</span>
+                          )}
+
+                          {leadPost.source_url && (
+                            <a
+                              href={leadPost.source_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-slate-800 hover:text-red-700"
+                            >
+                              <span>{leadPost.source_name || 'Source'}</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
                           )}
                         </div>
-                      )}
-
-                      {body && (
-                        <p className="text-sm sm:text-base text-slate-600 leading-relaxed whitespace-pre-line">
-                          {expanded ? body : shortBody}
-                        </p>
-                      )}
-
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
-                        {body.length > 340 ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedPosts((prev) => ({
-                                ...prev,
-                                [leadPost.id]: !prev[leadPost.id],
-                              }))
-                            }
-                            className="text-red-700 hover:text-red-900 cursor-pointer"
-                          >
-                            {expanded ? t.collapse : t.readMore}
-                          </button>
-                        ) : (
-                          <span className="text-slate-500">{leadPost.source_name || ''}</span>
-                        )}
-
-                        {leadPost.source_url && (
-                          <a
-                            href={leadPost.source_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-slate-800 hover:text-red-700"
-                          >
-                            <span>{leadPost.source_name || 'Source'}</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })()}
+                      </article>
+                    );
+                  })()}
 
                 {secondaryPosts.length > 0 && (
                   <div className="space-y-4">
@@ -855,16 +882,12 @@ export default function HubPage() {
 
             {/* Opportunities Index Column */}
             {showOpps && (
-              <aside
-                className={`${showNews ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}
-              >
+              <aside className={`${showNews ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}>
                 <div className="flex items-center justify-between border-b-2 border-slate-950 pb-2">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-950">
                     {t.openOpportunities}
                   </h3>
-                  <span className="text-xs font-bold text-slate-600">
-                    {filteredOpps.length}
-                  </span>
+                  <span className="text-xs font-bold text-slate-600">{filteredOpps.length}</span>
                 </div>
 
                 {filteredOpps.length === 0 ? (
@@ -891,8 +914,7 @@ export default function HubPage() {
                               <span className="inline-flex items-center gap-1 text-red-700 font-semibold">
                                 <Calendar className="w-3.5 h-3.5" />
                                 <span>
-                                  {t.deadline}:{' '}
-                                  {new Date(opp.deadline_at).toLocaleDateString()}
+                                  {t.deadline}: {new Date(opp.deadline_at).toLocaleDateString()}
                                 </span>
                               </span>
                             )}

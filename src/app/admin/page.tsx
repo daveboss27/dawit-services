@@ -328,7 +328,7 @@ export default function AdminPortalPage() {
       setAdminChecked(true);
     };
 
-    verifyAdmin();
+    void verifyAdmin();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
@@ -608,10 +608,92 @@ export default function AdminPortalPage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthorizedAdmin && isUnlocked) {
-      loadAllAdminData();
-    }
-  }, [isAuthorizedAdmin, isUnlocked, loadAllAdminData]);
+    if (!isAuthorizedAdmin || !isUnlocked) return;
+
+    let active = true;
+
+    const runInitialLoad = async () => {
+      setLoading(true);
+      try {
+        const [
+          profilesRes,
+          reqsRes,
+          formsRes,
+          subsRes,
+          postsRes,
+          oppsRes,
+          reportsRes,
+        ] = await Promise.all([
+          supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+          supabase.from('service_requests').select('*').order('created_at', { ascending: false }),
+          supabase.from('custom_forms').select('*').order('created_at', { ascending: false }),
+          supabase
+            .from('custom_form_submissions')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          supabase.from('hub_posts').select('*').order('created_at', { ascending: false }),
+          supabase.from('opportunities').select('*').order('created_at', { ascending: false }),
+          supabase.from('content_reports').select('*').order('created_at', { ascending: false }),
+        ]);
+
+        if (!active) return;
+
+        if (profilesRes.data) setProfiles(profilesRes.data as ProfileRow[]);
+        if (reqsRes.data) setRequests(reqsRes.data as ServiceRequestRow[]);
+        if (formsRes.data) setForms(formsRes.data as CustomFormRow[]);
+        if (subsRes.data) setSubmissions(subsRes.data as FormSubmissionRow[]);
+        if (postsRes.data) {
+          const { data: trData } = await supabase
+            .from('hub_post_translations')
+            .select('post_id, lang_code, title, body');
+          if (!active) return;
+
+          const grouped: Record<string, PostTranslationItem[]> = {};
+          for (const row of trData || []) {
+            const r = row as { post_id: string; lang_code: string; title: string; body?: string };
+            if (!grouped[r.post_id]) grouped[r.post_id] = [];
+            grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title, body: r.body });
+          }
+          setPosts(
+            (postsRes.data as HubPostRow[]).map((p) => ({
+              ...p,
+              hub_post_translations: grouped[p.id] || [],
+            }))
+          );
+        }
+        if (oppsRes.data) {
+          const { data: oppTrData } = await supabase
+            .from('opportunity_translations')
+            .select('opportunity_id, lang_code, title');
+          if (!active) return;
+
+          const groupedOpp: Record<string, { lang_code: string; title: string }[]> = {};
+          for (const row of oppTrData || []) {
+            const r = row as { opportunity_id: string; lang_code: string; title: string };
+            if (!groupedOpp[r.opportunity_id]) groupedOpp[r.opportunity_id] = [];
+            groupedOpp[r.opportunity_id].push({ lang_code: r.lang_code, title: r.title });
+          }
+          setOpportunities(
+            (oppsRes.data as OpportunityRow[]).map((o) => ({
+              ...o,
+              opportunity_translations: groupedOpp[o.id] || [],
+            }))
+          );
+        }
+        if (reportsRes.data) setReports(reportsRes.data as ReportRow[]);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void runInitialLoad();
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthorizedAdmin, isUnlocked]);
 
   const handleCreateCustomForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -633,7 +715,7 @@ export default function AdminPortalPage() {
       setFormDescEn('');
       setFormDeadline('');
       notify(isAm ? 'ቅጹ ተፈጥሯል እና በተጠቃሚ ገጽ ላይ ታይቷል።' : 'Form created and synced.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -646,7 +728,7 @@ export default function AdminPortalPage() {
       .eq('id', form.id);
     if (!error) {
       notify(!form.is_published ? 'Visible on UI.' : 'Hidden from UI.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -656,7 +738,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('custom_forms').delete().eq('id', id);
     if (!error) {
       notify('Form removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -669,7 +751,7 @@ export default function AdminPortalPage() {
       .eq('id', id);
     if (!error) {
       notify(`Submission ${status}.`);
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -679,7 +761,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('custom_form_submissions').delete().eq('id', id);
     if (!error) {
       notify('Submission removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -692,7 +774,7 @@ export default function AdminPortalPage() {
       .eq('id', id);
     if (!error) {
       notify('Service request updated.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -702,7 +784,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('service_requests').delete().eq('id', id);
     if (!error) {
       notify('Service request removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -712,7 +794,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('profiles').update(patch).eq('id', id);
     if (!error) {
       notify('User updated.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -722,7 +804,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (!error) {
       notify('User profile removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -802,7 +884,7 @@ export default function AdminPortalPage() {
       setPostMediaUrl('');
       setPostBreaking(false);
       notify(isAm ? 'ልጥፉ ከሚዲያ ጋር ታትሟል።' : 'Post published.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else if (error) {
       notify(error.message, true);
     }
@@ -889,7 +971,7 @@ export default function AdminPortalPage() {
     setEditingPostId(null);
     setEditPostMediaFile(null);
     notify(isAm ? 'ልጥፉ ተሻሽሏል።' : 'Post updated.');
-    loadAllAdminData();
+    void loadAllAdminData();
   };
 
   const togglePostStatus = async (post: HubPostRow) => {
@@ -900,7 +982,7 @@ export default function AdminPortalPage() {
       .eq('id', post.id);
     if (!error) {
       notify(`Post ${nextStatus}.`);
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -920,7 +1002,7 @@ export default function AdminPortalPage() {
     if (!error) {
       if (editingPostId === id) setEditingPostId(null);
       notify(isAm ? 'ልጥፉ ተወግዷል።' : 'Post deleted.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -997,7 +1079,7 @@ export default function AdminPortalPage() {
       setOppMediaFile(null);
       setOppMediaUrl('');
       notify(isAm ? 'እድሉ ተጨምሯል።' : 'Opportunity published.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else if (error) {
       notify(error.message, true);
     }
@@ -1010,7 +1092,7 @@ export default function AdminPortalPage() {
       .eq('id', opp.id);
     if (!error) {
       notify(!opp.is_active ? 'Opportunity approved & active.' : 'Opportunity paused.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -1020,7 +1102,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('opportunities').delete().eq('id', id);
     if (!error) {
       notify('Opportunity removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -1033,7 +1115,7 @@ export default function AdminPortalPage() {
       .eq('id', id);
     if (!error) {
       notify(`Report ${status}.`);
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }
@@ -1043,7 +1125,7 @@ export default function AdminPortalPage() {
     const { error } = await supabase.from('content_reports').delete().eq('id', id);
     if (!error) {
       notify('Report removed.');
-      loadAllAdminData();
+      void loadAllAdminData();
     } else {
       notify(error.message, true);
     }

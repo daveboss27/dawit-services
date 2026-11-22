@@ -59,6 +59,18 @@ const GRADE_OPTIONS = [
 
 const SCHEDULE_STORAGE_KEY = 'dawit_member_schedule_v1';
 
+function readInitialTasks(): ScheduleTask[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(SCHEDULE_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ScheduleTask[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [lang, setLang] = useState<LangCode>('am');
@@ -90,26 +102,14 @@ export default function DashboardPage() {
   const [angleMode, setAngleMode] = useState<'DEG' | 'RAD'>('DEG');
 
   // Program scheduler state
-  const [tasks, setTasks] = useState<ScheduleTask[]>([]);
+  const [tasks, setTasks] = useState<ScheduleTask[]>(() => readInitialTasks());
   const [taskTitle, setTaskTitle] = useState('');
   const [taskCategory, setTaskCategory] = useState<ScheduleTask['category']>('Study');
-  const [taskDate, setTaskDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [taskDate, setTaskDate] = useState('');
   const [taskTime, setTaskTime] = useState('09:00');
 
   const t = TRANSLATIONS[lang];
   const isAm = lang === 'am';
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(SCHEDULE_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as ScheduleTask[];
-        if (Array.isArray(parsed)) setTasks(parsed);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -137,29 +137,55 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace('/auth');
-        return;
-      }
-
-      setUserId(user.id);
-      setUserEmail(user.email || '');
-      await loadUserRecords(user.id);
-    } finally {
-      setLoading(false);
-    }
-  }, [loadUserRecords, router]);
-
   useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+    let active = true;
+
+    const initDashboard = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!active) return;
+
+        if (!user) {
+          router.replace('/auth');
+          return;
+        }
+
+        setUserId(user.id);
+        setUserEmail(user.email || '');
+
+        const [reqsRes, savedRes, intsRes] = await Promise.all([
+          supabase
+            .from('service_requests')
+            .select('id, service_type, workflow_stage, deposit_paid, customer_update, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          supabase.from('saved_opportunities').select('id').eq('user_id', user.id),
+          supabase.from('user_interests').select('interest_slug').eq('user_id', user.id),
+        ]);
+
+        if (!active) return;
+
+        if (reqsRes.data) setMyRequests(reqsRes.data as ServiceItem[]);
+        if (savedRes.data) setSavedCount(savedRes.data.length);
+        if (intsRes.data) {
+          setInterests((intsRes.data as { interest_slug: string }[]).map((r) => r.interest_slug));
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initDashboard();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   // Real-time subscription for service requests
   useEffect(() => {
@@ -170,13 +196,13 @@ export default function DashboardPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'service_requests', filter: `user_id=eq.${userId}` },
         () => {
-          loadUserRecords(userId);
+          void loadUserRecords(userId);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [userId, loadUserRecords]);
 
@@ -297,7 +323,6 @@ export default function DashboardPage() {
         throw new Error('Invalid characters');
       }
 
-      // eslint-disable-next-line no-new-func
       const fn = new Function(
         'sin',
         'cos',
@@ -324,12 +349,13 @@ export default function DashboardPage() {
   const addTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
+    const resolvedDate = taskDate || new Date().toISOString().slice(0, 10);
     setTasks((prev) => [
       {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         title: taskTitle.trim(),
         category: taskCategory,
-        date: taskDate || new Date().toISOString().slice(0, 10),
+        date: resolvedDate,
         time: taskTime || '09:00',
         done: false,
       },

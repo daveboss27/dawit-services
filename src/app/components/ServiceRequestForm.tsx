@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { LangKey, ServiceKey } from '../lib/servicesData';
 import { CheckCircle2, AlertCircle, Send, Upload, Copy, Check } from 'lucide-react';
@@ -449,7 +449,13 @@ export default function ServiceRequestForm({
   const [phone, setPhone] = useState('');
   const [telegramContact, setTelegramContact] = useState('');
   const [email, setEmail] = useState('');
+  const [prevInitialService, setPrevInitialService] = useState<ServiceKey>(initialService);
   const [selectedService, setSelectedService] = useState<ServiceKey>(initialService);
+
+  if (prevInitialService !== initialService) {
+    setPrevInitialService(initialService);
+    setSelectedService(initialService);
+  }
 
   const [passportHelpWith, setPassportHelpWith] = useState('');
   const [passportLocation, setPassportLocation] = useState('');
@@ -482,10 +488,6 @@ export default function ServiceRequestForm({
     fullName: string;
     serviceLabel: string;
   } | null>(null);
-
-  useEffect(() => {
-    setSelectedService(initialService);
-  }, [initialService]);
 
   const copyAccountValue = async (key: string, val: string) => {
     try {
@@ -605,7 +607,9 @@ export default function ServiceRequestForm({
     let { error } = await supabase.from('bookings').insert([fullPayload]);
 
     if (error) {
-      const fallbackSummary = screenshotUrl ? `${summaryText} | Screenshot: ${screenshotUrl}` : summaryText;
+      const fallbackSummary = screenshotUrl
+        ? `${summaryText} | Screenshot: ${screenshotUrl}`
+        : summaryText;
       const retry = await supabase.from('bookings').insert([
         {
           full_name: fullName.trim(),
@@ -759,7 +763,9 @@ export default function ServiceRequestForm({
 
         {selectedService === 'passport' && (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">{f.passportBoxTitle}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">
+              {f.passportBoxTitle}
+            </p>
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 {f.passportHelpLabel} <span className="text-blue-400">*</span>
@@ -804,7 +810,9 @@ export default function ServiceRequestForm({
 
         {selectedService === 'application' && (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">{f.appBoxTitle}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">
+              {f.appBoxTitle}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -820,7 +828,9 @@ export default function ServiceRequestForm({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{f.deadlineLabel}</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {f.deadlineLabel}
+                </label>
                 <input
                   type="text"
                   value={deadline}
@@ -857,7 +867,9 @@ export default function ServiceRequestForm({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">{f.optionalDescLabel}</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                {f.optionalDescLabel}
+              </label>
               <input
                 type="text"
                 value={optionalDescription}
@@ -871,7 +883,9 @@ export default function ServiceRequestForm({
 
         {selectedService === 'flight' && (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">{f.flightBoxTitle}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-blue-400">
+              {f.flightBoxTitle}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -915,7 +929,9 @@ export default function ServiceRequestForm({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{f.returnDateLabel}</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {f.returnDateLabel}
+                </label>
                 <input
                   type="date"
                   value={returnDate}
@@ -928,7 +944,9 @@ export default function ServiceRequestForm({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{f.tripTypeLabel}</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {f.tripTypeLabel}
+                </label>
                 <select
                   value={tripType}
                   onChange={(e) => setTripType(e.target.value as 'One-way' | 'Round trip')}
@@ -939,7 +957,9 @@ export default function ServiceRequestForm({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{f.passengersLabel}</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {f.passengersLabel}
+                </label>
                 <input
                   type="number"
                   min={1}
@@ -949,7 +969,9 @@ export default function ServiceRequestForm({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">{f.travelClassLabel}</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {f.travelClassLabel}
+                </label>
                 <select
                   value={travelClass}
                   onChange={(e) => setTravelClass(e.target.value)}
@@ -966,7 +988,9 @@ export default function ServiceRequestForm({
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">{f.moreDetailsLabel}</label>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            {f.moreDetailsLabel}
+          </label>
           <textarea
             rows={2}
             value={moreDetails}
@@ -1035,7 +1059,9 @@ export default function ServiceRequestForm({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">{f.paymentMethodLabel}</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                {f.paymentMethodLabel}
+              </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as 'telebirr' | 'CBE')}
@@ -1047,7 +1073,9 @@ export default function ServiceRequestForm({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">{f.paymentRefLabel}</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                {f.paymentRefLabel}
+              </label>
               <input
                 type="text"
                 value={paymentReference}
@@ -1059,7 +1087,9 @@ export default function ServiceRequestForm({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">{f.paymentScreenshotLabel}</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              {f.paymentScreenshotLabel}
+            </label>
             <label className="flex items-center gap-2.5 rounded-xl border border-dashed border-slate-700 bg-slate-950/80 px-3.5 py-2.5 text-xs text-slate-300 hover:border-blue-500 cursor-pointer transition">
               <Upload className="w-4 h-4 text-blue-400 shrink-0" />
               <span className="truncate">

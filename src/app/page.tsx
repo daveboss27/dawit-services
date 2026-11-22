@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from './lib/supabase';
 import { LangCode, SUPPORTED_LANGUAGES, TRANSLATIONS } from './lib/i18n';
@@ -139,61 +139,70 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
-  const loadPublicData = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setUserId(user?.id ?? null);
-
-    const [postsRes, formsRes] = await Promise.all([
-      supabase
-        .from('hub_posts')
-        .select('*')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(6),
-      supabase
-        .from('custom_forms')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false }),
-    ]);
-
-    if (postsRes.data) {
-      const { data: trData } = await supabase
-        .from('hub_post_translations')
-        .select('post_id, lang_code, title, summary');
-      const grouped: Record<
-        string,
-        { lang_code: string; title: string; summary?: string | null }[]
-      > = {};
-      for (const row of trData || []) {
-        const r = row as {
-          post_id: string;
-          lang_code: string;
-          title: string;
-          summary?: string | null;
-        };
-        if (!grouped[r.post_id]) grouped[r.post_id] = [];
-        grouped[r.post_id].push({
-          lang_code: r.lang_code,
-          title: r.title,
-          summary: r.summary,
-        });
-      }
-      setPosts(
-        (postsRes.data as HubPostPreview[]).map((p) => ({
-          ...p,
-          hub_post_translations: grouped[p.id] || [],
-        }))
-      );
-    }
-    if (formsRes.data) setLiveForms(formsRes.data as CustomFormItem[]);
-  }, []);
-
   useEffect(() => {
-    loadPublicData();
-  }, [loadPublicData]);
+    let active = true;
+
+    const fetchInitial = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!active) return;
+      setUserId(user?.id ?? null);
+
+      const [postsRes, formsRes] = await Promise.all([
+        supabase
+          .from('hub_posts')
+          .select('*')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false })
+          .limit(6),
+        supabase
+          .from('custom_forms')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (!active) return;
+
+      if (postsRes.data) {
+        const { data: trData } = await supabase
+          .from('hub_post_translations')
+          .select('post_id, lang_code, title, summary');
+        if (!active) return;
+
+        const grouped: Record<
+          string,
+          { lang_code: string; title: string; summary?: string | null }[]
+        > = {};
+        for (const row of trData || []) {
+          const r = row as {
+            post_id: string;
+            lang_code: string;
+            title: string;
+            summary?: string | null;
+          };
+          if (!grouped[r.post_id]) grouped[r.post_id] = [];
+          grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title, summary: r.summary });
+        }
+        setPosts(
+          (postsRes.data as HubPostPreview[]).map((p) => ({
+            ...p,
+            hub_post_translations: grouped[p.id] || [],
+          }))
+        );
+      }
+      if (formsRes.data) {
+        setLiveForms(formsRes.data as CustomFormItem[]);
+      }
+    };
+
+    void fetchInitial();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -841,12 +850,8 @@ export default function HomePage() {
                     }
                     className="bg-slate-950/65 border border-white/25 px-3 py-2.5 text-sm text-white"
                   >
-                    <option value="new">
-                      {isAm ? 'አዲስ ፓስፖርት' : 'New Passport'}
-                    </option>
-                    <option value="renewal">
-                      {isAm ? 'እድሳት (Renewal)' : 'Renewal'}
-                    </option>
+                    <option value="new">{isAm ? 'አዲስ ፓስፖርት' : 'New Passport'}</option>
+                    <option value="renewal">{isAm ? 'እድሳት (Renewal)' : 'Renewal'}</option>
                     <option value="lost_damaged">
                       {isAm ? 'የጠፋ / የተበላሸ' : 'Lost / Damaged'}
                     </option>
