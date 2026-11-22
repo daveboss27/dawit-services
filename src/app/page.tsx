@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
-  // Amharic is selected first by default
   const [lang, setLang] = useState<LangKey>('am');
   const [modalOpen, setModalOpen] = useState(false);
   const [activeService, setActiveService] = useState<ServiceKey>('application');
@@ -73,7 +72,6 @@ export default function HomePage() {
 
   return (
     <div id="home" className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      {/* NAVIGATION BAR */}
       <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <Link href="#home" className="font-extrabold tracking-tight text-white text-base sm:text-lg shrink-0">
@@ -111,7 +109,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* EYE-CATCHING 4-LANGUAGE BANNER (AMHARIC FIRST BY DEFAULT) */}
       <div className="border-b border-blue-500/30 bg-gradient-to-r from-blue-950/75 via-slate-900 to-blue-950/75 px-4 sm:px-6 py-3">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm text-blue-100">
@@ -145,7 +142,6 @@ export default function HomePage() {
       </div>
 
       <main>
-        {/* 1. HOMEPAGE HERO SECTION + TOP PHOTO & NAME ONLY */}
         <section className="border-b border-slate-800/80 py-14 sm:py-20 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-8 space-y-6">
@@ -178,7 +174,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* TOP PHOTO & NAME ONLY */}
             <div className="lg:col-span-4 flex flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-center space-y-3">
               <img
                 src="/dawit-profile.jpg"
@@ -190,7 +185,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 2. ONLY THREE SERVICE CATEGORIES */}
         <section id="services" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="max-w-2xl space-y-2">
@@ -250,7 +244,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 3. HOW THE SERVICE WORKS */}
         <section id="how-it-works" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-950">
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="max-w-2xl space-y-2">
@@ -273,7 +266,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 4. 200 ETB SERVICE DEPOSIT POLICY */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
           <div className="max-w-4xl mx-auto rounded-2xl border border-blue-500/40 bg-slate-900 p-6 sm:p-8 space-y-4">
             <div className="inline-block text-xs font-bold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full">
@@ -290,7 +282,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 6. TRANSPARENT PRICING */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-5xl mx-auto space-y-6">
             <div className="space-y-2 max-w-2xl">
@@ -325,18 +316,16 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 5. REUSABLE SERVICE REQUEST FORM SECTION */}
         <section id="request-form" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/30">
           <div className="max-w-3xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
             <div className="space-y-1.5">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.formHeading}</h2>
               <p className="text-xs sm:text-sm text-slate-400">{c.formSubheading}</p>
             </div>
-            <ServiceRequestForm initialService={activeService} />
+            <ServiceRequestForm initialService={activeService} lang={lang} />
           </div>
         </section>
 
-        {/* 7. ABOUT DAWIT (NON-REPETITIVE PROFILE DETAILS) */}
         <section id="about" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/80 p-6 sm:p-8 space-y-3">
             <div className="text-xs font-bold uppercase tracking-wider text-blue-400">{c.aboutBadge}</div>
@@ -346,7 +335,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 8. TRUST SECTION */}
         <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-6xl mx-auto space-y-8">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.trustHeading}</h2>
@@ -367,7 +355,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 9. IMPORTANT DISCLAIMER */}
         <section className="py-14 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
           <div className="max-w-4xl mx-auto rounded-2xl border border-amber-500/30 bg-slate-900 p-6 space-y-3">
             <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
@@ -382,7 +369,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 13. FAQ */}
         <section id="faq" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
           <div className="max-w-3xl mx-auto space-y-6">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.faqHeading}</h2>
@@ -418,7 +404,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* 11. CONTACT SECTION */}
         <section id="contact" className="py-16 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -535,7 +520,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* EMERGENCY / VIP PRIORITY EMAIL BOX */}
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold text-amber-300">
@@ -574,7 +558,6 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* 10. PRIVACY, TERMS AND REFUND FOOTER */}
       <footer className="border-t border-slate-800 bg-slate-950 py-8 px-4 sm:px-6 text-xs text-slate-400">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -604,7 +587,6 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* MODAL FOR "REQUEST A SERVICE" BUTTONS */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-7 space-y-4 my-auto max-h-[90vh] overflow-y-auto">
@@ -624,7 +606,7 @@ export default function HomePage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <ServiceRequestForm initialService={activeService} />
+            <ServiceRequestForm initialService={activeService} lang={lang} />
           </div>
         </div>
       )}
