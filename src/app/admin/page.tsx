@@ -1,7 +1,7 @@
 'use client';
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { isAllowedAdminEmail } from '../lib/adminGuard';
 import { supabase } from '../lib/supabase';
 import {
   LangCode,
@@ -222,6 +222,9 @@ interface ReportRow {
 }
 
 export default function AdminPortalPage() {
+  const [adminChecked, setAdminChecked] = useState(false);
+  const [isAuthorizedAdmin, setIsAuthorizedAdmin] = useState(false);
+
   const [lang, setLang] = useState<LangCode>('am');
   const [groupIndex, setGroupIndex] = useState(0);
   const [tab, setTab] = useState<AdminTab>('overview');
@@ -313,6 +316,31 @@ export default function AdminPortalPage() {
   const [notifLink, setNotifLink] = useState('/hub');
 
   const isAm = lang === 'am';
+
+  useEffect(() => {
+    let active = true;
+    const verifyAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!active) return;
+      setIsAuthorizedAdmin(Boolean(user && isAllowedAdminEmail(user.email)));
+      setAdminChecked(true);
+    };
+
+    verifyAdmin();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setIsAuthorizedAdmin(Boolean(session?.user && isAllowedAdminEmail(session.user.email)));
+      setAdminChecked(true);
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const notify = (msg: string, isError = false) => {
     if (toastTimerRef.current) {
@@ -580,10 +608,10 @@ export default function AdminPortalPage() {
   }, []);
 
   useEffect(() => {
-    if (isUnlocked) {
+    if (isAuthorizedAdmin && isUnlocked) {
       loadAllAdminData();
     }
-  }, [isUnlocked, loadAllAdminData]);
+  }, [isAuthorizedAdmin, isUnlocked, loadAllAdminData]);
 
   const handleCreateCustomForm = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1140,6 +1168,49 @@ export default function AdminPortalPage() {
       </div>
     );
   };
+
+  if (!adminChecked) {
+    return (
+      <div className="relative min-h-screen text-white flex items-center justify-center px-4">
+        {renderPhotoBackdrop()}
+        <p className="relative z-10 text-sm text-slate-200">
+          {isAm ? 'የአስተዳዳሪ ፈቃድ በመፈተሽ ላይ...' : 'Verifying admin access...'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!isAuthorizedAdmin) {
+    return (
+      <div className="relative min-h-screen text-white flex items-center justify-center px-4">
+        {renderPhotoBackdrop()}
+        <div className="relative z-10 w-full max-w-md bg-slate-950/85 backdrop-blur-md border border-red-500/40 p-6 sm:p-8 space-y-4 text-center">
+          <h1 className="text-xl font-black text-red-400">
+            {isAm ? 'የአስተዳዳሪ ፈቃድ ብቻ' : 'Admin Access Only'}
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+            {isAm
+              ? 'ይህ የአስተዳዳሪ ገጽ ለ dawittesfay2724@gmail.com ብቻ የተፈቀደ ነው። እባክዎ በአስተዳዳሪ መለያዎ ይግቡ።'
+              : 'This control panel is restricted exclusively to dawittesfay2724@gmail.com. Please sign in with the authorized admin account.'}
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/auth"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase"
+            >
+              {isAm ? 'ይግቡ' : 'Sign In'}
+            </Link>
+            <Link
+              href="/"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white text-xs font-bold uppercase"
+            >
+              {isAm ? 'ዋና ገጽ' : 'Home'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!lockReady) {
     return null;

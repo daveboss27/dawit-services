@@ -287,15 +287,30 @@ export default function HubPage() {
     }
   }, [loading, highlightedPostId, posts]);
 
+  const loadSavedOpportunities = useCallback(async (uid: string | null) => {
+    if (!uid) {
+      setSavedOppIds([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('saved_opportunities')
+      .select('opportunity_id')
+      .eq('user_id', uid);
+    if (!error && data) {
+      setSavedOppIds((data as { opportunity_id: string }[]).map((r) => r.opportunity_id));
+    }
+  }, []);
+
   const loadHubData = useCallback(async () => {
     setLoading(true);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      setUserId(user?.id ?? null);
+      const currentUid = user?.id ?? null;
+      setUserId(currentUid);
 
-      const [catsRes, postsRes, oppsRes, savedRes] = await Promise.all([
+      const [catsRes, postsRes, oppsRes] = await Promise.all([
         supabase
           .from('hub_categories')
           .select('id, slug, name_en, name_am, name_ti, name_om')
@@ -312,9 +327,6 @@ export default function HubPage() {
           )
           .eq('is_active', true)
           .order('created_at', { ascending: false }),
-        user
-          ? supabase.from('saved_opportunities').select('opportunity_id').eq('user_id', user.id)
-          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (!catsRes.error && catsRes.data) {
@@ -346,17 +358,28 @@ export default function HubPage() {
       if (!oppsRes.error && oppsRes.data) {
         setOpportunities(oppsRes.data as OpportunityItem[]);
       }
-      if (user && !savedRes.error && savedRes.data) {
-        setSavedOppIds((savedRes.data as { opportunity_id: string }[]).map((r) => r.opportunity_id));
-      }
+
+      await loadSavedOpportunities(currentUid);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadSavedOpportunities]);
 
   useEffect(() => {
     loadHubData();
   }, [loadHubData]);
+
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUid = session?.user?.id ?? null;
+      setUserId(nextUid);
+      loadSavedOpportunities(nextUid);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [loadSavedOpportunities]);
 
   const toggleSaveOpportunity = async (oppId: string) => {
     setNotice(null);
@@ -590,8 +613,7 @@ export default function HubPage() {
             <div className="lg:col-span-7 h-64 bg-white border border-slate-200 animate-pulse" />
             <div className="lg:col-span-5 h-64 bg-white border border-slate-200 animate-pulse" />
           </div>
-        ) : (showNews && filteredPosts.length === 0) &&
-          (showOpps && filteredOpps.length === 0) ? (
+        ) : showNews && filteredPosts.length === 0 && showOpps && filteredOpps.length === 0 ? (
           <div className="bg-white border border-slate-200 p-12 text-center text-sm text-slate-600">
             {t.emptyState}
           </div>
@@ -600,9 +622,7 @@ export default function HubPage() {
             {/* Editorial Stories Column */}
             {showNews && (
               <div
-                className={`${
-                  showOpps ? 'lg:col-span-7' : 'lg:col-span-12'
-                } space-y-6`}
+                className={`${showOpps ? 'lg:col-span-7' : 'lg:col-span-12'} space-y-6`}
               >
                 {leadPost && (() => {
                   const tr = pickTranslation(leadPost.hub_post_translations, lang);
@@ -737,7 +757,9 @@ export default function HubPage() {
                             key={post.id}
                             id={`post-${post.id}`}
                             className={`p-5 sm:p-6 space-y-2.5 transition ${
-                              isHighlighted ? 'bg-amber-50/70 ring-2 ring-inset ring-amber-400' : ''
+                              isHighlighted
+                                ? 'bg-amber-50/70 ring-2 ring-inset ring-amber-400'
+                                : ''
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
@@ -834,9 +856,7 @@ export default function HubPage() {
             {/* Opportunities Index Column */}
             {showOpps && (
               <aside
-                className={`${
-                  showNews ? 'lg:col-span-5' : 'lg:col-span-12'
-                } space-y-4`}
+                className={`${showNews ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}
               >
                 <div className="flex items-center justify-between border-b-2 border-slate-950 pb-2">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-950">

@@ -163,12 +163,23 @@ export default function HomePage() {
       const { data: trData } = await supabase
         .from('hub_post_translations')
         .select('post_id, lang_code, title, summary');
-      const grouped: Record<string, { lang_code: string; title: string; summary?: string | null }[]> =
-        {};
+      const grouped: Record<
+        string,
+        { lang_code: string; title: string; summary?: string | null }[]
+      > = {};
       for (const row of trData || []) {
-        const r = row as { post_id: string; lang_code: string; title: string; summary?: string | null };
+        const r = row as {
+          post_id: string;
+          lang_code: string;
+          title: string;
+          summary?: string | null;
+        };
         if (!grouped[r.post_id]) grouped[r.post_id] = [];
-        grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title, summary: r.summary });
+        grouped[r.post_id].push({
+          lang_code: r.lang_code,
+          title: r.title,
+          summary: r.summary,
+        });
       }
       setPosts(
         (postsRes.data as HubPostPreview[]).map((p) => ({
@@ -184,6 +195,16 @@ export default function HomePage() {
     loadPublicData();
   }, [loadPublicData]);
 
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   const buildStructuredDetails = () => {
     const parts: string[] = [];
     if (serviceChoice === 'passport_appointment') {
@@ -197,7 +218,9 @@ export default function HomePage() {
       if (flightDate.trim()) parts.push(`Travel Date: ${flightDate.trim()}`);
     } else if (serviceChoice === 'application_digital') {
       parts.push(`Category: ${applicationCategory}`);
-      if (applicationTarget.trim()) parts.push(`Target Institution/Program: ${applicationTarget.trim()}`);
+      if (applicationTarget.trim()) {
+        parts.push(`Target Institution/Program: ${applicationTarget.trim()}`);
+      }
     }
     if (notes.trim()) {
       parts.push(`Notes: ${notes.trim()}`);
@@ -498,14 +521,20 @@ export default function HomePage() {
           </section>
 
           {/* ANNOUNCEMENTS, NEWS & ACCOUNT PRIVILEGES */}
-          <section id="announcements" className="border-t border-white/20 pt-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <section
+            id="announcements"
+            className="border-t border-white/20 pt-10 grid grid-cols-1 lg:grid-cols-12 gap-10"
+          >
             <div className="lg:col-span-7 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-wider">
                   <Megaphone className="w-4 h-4" />
                   <span>{isAm ? 'ማስታወቂያዎች እና ዜናዎች' : 'Announcements & News'}</span>
                 </div>
-                <Link href="/hub" className="text-xs font-black underline text-amber-300 hover:text-white">
+                <Link
+                  href="/hub"
+                  className="text-xs font-black underline text-amber-300 hover:text-white"
+                >
                   {t.ctaExploreHub}
                 </Link>
               </div>

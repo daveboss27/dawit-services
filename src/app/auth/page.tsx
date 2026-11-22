@@ -20,6 +20,7 @@ import {
   X,
   Globe,
   KeyRound,
+  MailCheck,
 } from 'lucide-react';
 
 interface PasswordCheck {
@@ -103,6 +104,10 @@ const AUTH_COPY: Record<
     backToAuth: string;
     sendResetBtn: string;
     resetSentMsg: string;
+    verifiedSignedOutMsg: string;
+    unverifiedLoginMsg: string;
+    resendVerificationBtn: string;
+    verificationResentMsg: string;
     benefitsList: string[];
   }
 > = {
@@ -126,6 +131,12 @@ const AUTH_COPY: Record<
     backToAuth: 'Back to Sign In / Register',
     sendResetBtn: 'Send Password Reset Link',
     resetSentMsg: 'Password reset link sent to your email address.',
+    verifiedSignedOutMsg:
+      'Email verified! For your security, you have been signed out. Please enter your email and password to sign in.',
+    unverifiedLoginMsg:
+      'Your email is not verified yet. Please open the verification link sent to your email first.',
+    resendVerificationBtn: 'Resend verification email',
+    verificationResentMsg: 'Verification link re-sent to your email address.',
     benefitsList: [
       'Save scholarships, jobs, internships, and opportunities',
       'Receive deadline alerts, updates, and service progress notifications',
@@ -153,6 +164,12 @@ const AUTH_COPY: Record<
     backToAuth: 'ወደ መግቢያ / ምዝገባ ይመለሱ',
     sendResetBtn: 'የይለፍ ቃል ማደሻ አገናኝ ይላኩ',
     resetSentMsg: 'የይለፍ ቃል ማደሻ አገናኝ ወደ ኢሜይልዎ ተልኳል።',
+    verifiedSignedOutMsg:
+      'ኢሜይልዎ ተረጋግጧል! ለደህንነት ሲባል ከመለያው ወጥተዋል፤ እባክዎ ኢሜይል እና የይለፍ ቃል በማስገባት ይግቡ።',
+    unverifiedLoginMsg:
+      'ኢሜይልዎ ገና አልተረጋገጠም። እባክዎ ወደ ኢሜይልዎ የተላከውን የማረጋገጫ ሊንክ ይጫኑ።',
+    resendVerificationBtn: 'የማረጋገጫ ኢሜይል እንደገና ላክ',
+    verificationResentMsg: 'የማረጋገጫ ሊንክ ወደ ኢሜይልዎ እንደገና ተልኳል።',
     benefitsList: [
       'ስኮላርሺፖችን፣ ስራዎችን፣ ኢንተርንሺፖችን እና እድሎችን ያስቀምጡ',
       'የማብቂያ ቀን ማሳሰቢያዎችን እና የአገልግሎት ሂደት ማሳወቂያዎችን ያግኙ',
@@ -180,6 +197,12 @@ const AUTH_COPY: Record<
     backToAuth: 'ናብ መእተዊ / ምዝገባ ተመለስ',
     sendResetBtn: 'መላግቦ መቐየሪ መሕለፊ ቃል ስደድ',
     resetSentMsg: 'ናብ ኢመይልካ መላግቦ መቐየሪ መሕለፊ ቃል ተሰዲዱ ኣሎ።',
+    verifiedSignedOutMsg:
+      'ኢመይልካ ተረጋጊጹ ኣሎ! ንጸጥታ ሲባል ወጺእካ ኣለኻ፤ ንምእታው ኢመይልን መሕለፊ ቃልን ኣእቱ።',
+    unverifiedLoginMsg:
+      'ኢመይልካ ገና ኣይተረጋገጸን። በጃኻ ናብ ኢመይልካ ዝተሰደደ መላግቦ መረጋገጺ ጠውቕ።',
+    resendVerificationBtn: 'መረጋገጺ ኢመይል እንደገና ስደድ',
+    verificationResentMsg: 'መረጋገጺ መላግቦ ናብ ኢመይልካ እንደገና ተሰዲዱ ኣሎ።',
     benefitsList: [
       'ስኮላርሺፓት፣ ስራሓት፣ ኢንተርንሺፓትን ዕድላትን ዓቅብ',
       'መዘኻኸሪ ናይ መወዳእታ ዕለትን ሓበሬታ ኣገልግሎትን ርከብ',
@@ -207,6 +230,12 @@ const AUTH_COPY: Record<
     backToAuth: 'Gara Seensa / Galmee Deebi’i',
     sendResetBtn: 'Geessituu Jecha Darbi Haaromsaa Ergi',
     resetSentMsg: 'Geessituun jecha darbi haaromsaa imeelii keessanitti ergameera.',
+    verifiedSignedOutMsg:
+      'Imeeliin keessan mirkanaa’eera! Eegumsaaf jecha ba’aataniirtu; maaloo imeelii fi jecha darbi galchuun seenaa.',
+    unverifiedLoginMsg:
+      'Imeeliin keessan hin mirkanoofne. Maaloo geessituu mirkaneessaa imeelii keessanitti ergame cuqaasaa.',
+    resendVerificationBtn: 'Imeelii mirkaneessaa irra deebi’ii ergi',
+    verificationResentMsg: 'Geessituun mirkaneessaa imeelii keessanitti irra deebi’ee ergameera.',
     benefitsList: [
       'Iskolaarshii, hojii, internshiippii fi carraawwan olkaa’i',
       'Yaadachiisa guyyaa xumuraa fi odeeffannoo tajaajilaa argadhu',
@@ -248,15 +277,42 @@ export default function AuthPage() {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
+
+    const checkAuthAndVerification = async () => {
+      const url = new URL(window.location.href);
+      const isVerifiedFlag = url.searchParams.get('verified') === '1';
+      const code = url.searchParams.get('code');
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''));
+      const hashType = hashParams.get('type');
+
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+
+      // If arriving from an email verification link: confirm, sign out by default, and require login
+      if (isVerifiedFlag || hashType === 'signup' || hashType === 'email') {
+        await supabase.auth.signOut();
+        if (!active) return;
+        window.history.replaceState({}, '', '/auth');
+        setMode('signin');
+        setPassword('');
+        setConfirmPassword('');
+        setMessage(AUTH_COPY[lang].verifiedSignedOutMsg);
+        return;
+      }
+
+      const { data } = await supabase.auth.getUser();
       if (active && data.user) {
         router.replace('/dashboard');
       }
-    });
+    };
+
+    checkAuthAndVerification();
+
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [lang, router]);
 
   const checkResults = useMemo(
     () =>
@@ -276,6 +332,40 @@ export default function AuthPage() {
     );
   };
 
+  const handleResendVerification = async () => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMsg(`${c.emailLabel} is required.`);
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+    setErrorMsg(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/auth?verified=1`;
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: cleanEmail,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
+
+      if (error) {
+        setErrorMsg(error.message);
+        return;
+      }
+
+      setMessage(c.verificationResentMsg);
+    } catch {
+      setErrorMsg(t.errorText);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -284,7 +374,10 @@ export default function AuthPage() {
 
     try {
       if (mode === 'reset') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+        const redirectTo = `${window.location.origin}/auth`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo,
+        });
         if (error) {
           setErrorMsg(error.message);
           return;
@@ -307,10 +400,12 @@ export default function AuthPage() {
           return;
         }
 
+        const redirectTo = `${window.location.origin}/auth?verified=1`;
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
+            emailRedirectTo: redirectTo,
             data: {
               username: username.trim(),
               full_name: fullName.trim() || null,
@@ -352,20 +447,29 @@ export default function AuthPage() {
           }
         }
 
+        // Do not give direct dashboard access before email verification; sign out by default
         if (data.session) {
-          router.replace('/dashboard');
-          return;
+          await supabase.auth.signOut();
         }
 
+        setPassword('');
+        setConfirmPassword('');
+        setMode('signin');
         setMessage(t.authEmailVerified);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: signInData, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
 
         if (error) {
           setErrorMsg(error.message);
+          return;
+        }
+
+        if (signInData.user && !signInData.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          setErrorMsg(c.unverifiedLoginMsg);
           return;
         }
 
@@ -768,19 +872,33 @@ export default function AuthPage() {
                 : c.sendResetBtn}
             </button>
 
-            <div className="flex items-center justify-between pt-1 text-xs font-semibold text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs font-semibold text-slate-600">
               {mode !== 'reset' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('reset');
-                    setMessage(null);
-                    setErrorMsg(null);
-                  }}
-                  className="hover:text-red-700 underline cursor-pointer"
-                >
-                  {c.forgotPasswordLink}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('reset');
+                      setMessage(null);
+                      setErrorMsg(null);
+                    }}
+                    className="hover:text-red-700 underline cursor-pointer"
+                  >
+                    {c.forgotPasswordLink}
+                  </button>
+
+                  {mode === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1 hover:text-red-700 underline cursor-pointer"
+                    >
+                      <MailCheck className="w-3.5 h-3.5" />
+                      <span>{c.resendVerificationBtn}</span>
+                    </button>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"
