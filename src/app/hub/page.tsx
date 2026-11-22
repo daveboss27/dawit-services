@@ -113,6 +113,7 @@ const UI_COPY: Record<
     latestDispatches: string;
     openOpportunities: string;
     priorityTag: string;
+    highlightedTag: string;
     readMore: string;
     collapse: string;
     saveOpp: string;
@@ -141,6 +142,7 @@ const UI_COPY: Record<
     latestDispatches: 'የቅርብ ጊዜ ዜናዎች እና ልጥፎች',
     openOpportunities: 'ክፍት እድሎች',
     priorityTag: 'ቅድሚያ',
+    highlightedTag: 'የተመረጠ ዜና',
     readMore: 'ሙሉ ጽሁፍ ያንብቡ',
     collapse: 'ያሳንሱ',
     saveOpp: 'ያስቀምጡ',
@@ -168,6 +170,7 @@ const UI_COPY: Record<
     latestDispatches: 'Latest Stories & Updates',
     openOpportunities: 'Active Opportunities',
     priorityTag: 'Priority',
+    highlightedTag: 'Selected Story',
     readMore: 'Read full story',
     collapse: 'Show less',
     saveOpp: 'Save',
@@ -195,6 +198,7 @@ const UI_COPY: Record<
     latestDispatches: 'ሓደሽቲ ዜናታትን ልጥፍታትን',
     openOpportunities: 'ክፉት ዕድላት',
     priorityTag: 'ቀዳምነት',
+    highlightedTag: 'ዝተመርጸ ዜና',
     readMore: 'ምሉእ ኣንብብ',
     collapse: 'ውሕድ ኣርኢ',
     saveOpp: 'ዓቅብ',
@@ -222,6 +226,7 @@ const UI_COPY: Record<
     latestDispatches: 'Oduu fi Maxxansa Haaraa',
     openOpportunities: 'Carraawwan Banaa',
     priorityTag: 'Dursa',
+    highlightedTag: 'Oduu Filatame',
     readMore: 'Guutummaa dubbisi',
     collapse: 'Gabaabsi',
     saveOpp: 'Olkaa’i',
@@ -252,6 +257,7 @@ export default function HubPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [savedOppIds, setSavedOppIds] = useState<string[]>([]);
@@ -262,6 +268,24 @@ export default function HubPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const t = UI_COPY[lang];
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const postParam = params.get('post')?.trim() || null;
+    if (postParam) {
+      setHighlightedPostId(postParam);
+      setActiveTab('news');
+      setExpandedPosts((prev) => ({ ...prev, [postParam]: true }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || !highlightedPostId) return;
+    const el = document.getElementById(`post-${highlightedPostId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [loading, highlightedPostId, posts]);
 
   const loadHubData = useCallback(async () => {
     setLoading(true);
@@ -583,15 +607,28 @@ export default function HubPage() {
                 {leadPost && (() => {
                   const tr = pickTranslation(leadPost.hub_post_translations, lang);
                   const media = getHubPostMedia(leadPost);
-                  const expanded = !!expandedPosts[leadPost.id];
+                  const isHighlighted = highlightedPostId === leadPost.id;
+                  const expanded = !!expandedPosts[leadPost.id] || isHighlighted;
                   const body = tr?.body || '';
                   const shortBody = body.length > 340 ? `${body.slice(0, 340).trim()}...` : body;
 
                   return (
-                    <article className="bg-white border border-slate-200 border-t-4 border-t-red-700 p-6 sm:p-8 space-y-4 shadow-xs">
+                    <article
+                      id={`post-${leadPost.id}`}
+                      className={`bg-white border border-t-4 border-t-red-700 p-6 sm:p-8 space-y-4 shadow-xs transition ${
+                        isHighlighted
+                          ? 'border-amber-500 ring-2 ring-amber-400 bg-amber-50/30'
+                          : 'border-slate-200'
+                      }`}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider">
                         <div className="flex items-center gap-2">
                           <span className="text-red-700">{t.leadHeadline}</span>
+                          {isHighlighted && (
+                            <span className="bg-amber-400 text-slate-950 px-2 py-0.5 font-black">
+                              {t.highlightedTag}
+                            </span>
+                          )}
                           {leadPost.is_breaking && (
                             <span className="bg-red-700 text-white px-2 py-0.5">
                               {t.priorityTag}
@@ -689,17 +726,31 @@ export default function HubPage() {
                       {secondaryPosts.map((post) => {
                         const tr = pickTranslation(post.hub_post_translations, lang);
                         const media = getHubPostMedia(post);
-                        const expanded = !!expandedPosts[post.id];
+                        const isHighlighted = highlightedPostId === post.id;
+                        const expanded = !!expandedPosts[post.id] || isHighlighted;
                         const body = tr?.body || '';
                         const shortBody =
                           body.length > 220 ? `${body.slice(0, 220).trim()}...` : body;
 
                         return (
-                          <article key={post.id} className="p-5 sm:p-6 space-y-2.5">
+                          <article
+                            key={post.id}
+                            id={`post-${post.id}`}
+                            className={`p-5 sm:p-6 space-y-2.5 transition ${
+                              isHighlighted ? 'bg-amber-50/70 ring-2 ring-inset ring-amber-400' : ''
+                            }`}
+                          >
                             <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                              <span className="font-bold uppercase tracking-wider text-slate-800">
-                                {post.post_type || 'Dispatch'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold uppercase tracking-wider text-slate-800">
+                                  {post.post_type || 'Dispatch'}
+                                </span>
+                                {isHighlighted && (
+                                  <span className="bg-amber-400 text-slate-950 px-2 py-0.5 font-black uppercase">
+                                    {t.highlightedTag}
+                                  </span>
+                                )}
+                              </div>
                               <span>
                                 {new Date(
                                   post.publish_at || post.created_at

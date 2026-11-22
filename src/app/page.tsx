@@ -501,27 +501,34 @@ export default function HomePage() {
           <section id="announcements" className="border-t border-white/20 pt-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-7 space-y-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-amber-300 text-xs font-extrabold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-wider">
                   <Megaphone className="w-4 h-4" />
                   <span>{isAm ? 'ማስታወቂያዎች እና ዜናዎች' : 'Announcements & News'}</span>
                 </div>
-                <Link href="/hub" className="text-xs font-bold underline text-amber-300">
+                <Link href="/hub" className="text-xs font-black underline text-amber-300 hover:text-white">
                   {t.ctaExploreHub}
                 </Link>
               </div>
 
               {announcements.length > 0 && (
-                <div className="border-l-2 border-red-500 pl-4 space-y-3">
-                  <p className="text-xs font-extrabold uppercase text-red-400">
-                    {isAm ? 'ዋና ማስታወቂያ' : 'Announcement'}
-                  </p>
+                <div className="border-l-4 border-red-600 bg-slate-950/60 p-4 space-y-3">
+                  <span className="inline-block bg-red-600 text-white px-2.5 py-0.5 text-xs font-black uppercase tracking-wider">
+                    {isAm ? 'ዋና ማስታወቂያ / የዜና ማንቂያ' : 'News Alert / Announcement'}
+                  </span>
                   {announcements.slice(0, 2).map((a) => {
                     const text = pickPostText(a);
                     const media = getHomePostMedia(a);
                     return (
                       <div key={a.id} className="space-y-2">
-                        <h3 className="text-lg font-black text-white">{text.title}</h3>
-                        {text.summary && <p className="text-sm text-slate-200">{text.summary}</p>}
+                        <Link
+                          href={`/hub?post=${encodeURIComponent(a.id)}`}
+                          className="block text-xl sm:text-2xl font-black text-white hover:text-amber-300 underline-offset-4 hover:underline transition"
+                        >
+                          {text.title}
+                        </Link>
+                        {text.summary && (
+                          <p className="text-sm font-semibold text-slate-100">{text.summary}</p>
+                        )}
                         {media.url && (
                           <div className="max-w-md border border-white/20 bg-slate-950/70 p-2">
                             {media.isVideo ? (
@@ -548,7 +555,7 @@ export default function HomePage() {
               )}
 
               <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2 text-slate-200 text-xs font-extrabold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-amber-300 text-xs font-black uppercase tracking-wider">
                   <Newspaper className="w-4 h-4 text-amber-300" />
                   <span>{isAm ? 'የቅርብ ጊዜ ዜናዎች' : 'Latest News'}</span>
                 </div>
@@ -565,7 +572,10 @@ export default function HomePage() {
                       const media = getHomePostMedia(n);
                       return (
                         <li key={n.id} className="border-b border-white/10 pb-3 space-y-2">
-                          <Link href="/hub" className="hover:text-amber-300 font-semibold block">
+                          <Link
+                            href={`/hub?post=${encodeURIComponent(n.id)}`}
+                            className="hover:text-amber-300 font-black text-base text-white underline-offset-4 hover:underline block"
+                          >
                             {text.title}
                           </Link>
                           {media.url && (
