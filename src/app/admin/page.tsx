@@ -35,6 +35,8 @@ import {
   Pencil,
   Save,
   X,
+  LogOut,
+  UserCheck,
 } from 'lucide-react';
 
 const SEVEN_PHOTOS = [
@@ -224,6 +226,8 @@ interface ReportRow {
 export default function AdminPortalPage() {
   const [adminChecked, setAdminChecked] = useState(false);
   const [isAuthorizedAdmin, setIsAuthorizedAdmin] = useState(false);
+  const [activeSessionEmail, setActiveSessionEmail] = useState<string | null>(null);
+  const [signingOutSession, setSigningOutSession] = useState(false);
 
   const [lang, setLang] = useState<LangCode>('am');
   const [groupIndex, setGroupIndex] = useState(0);
@@ -324,7 +328,9 @@ export default function AdminPortalPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!active) return;
-      setIsAuthorizedAdmin(Boolean(user && isAllowedAdminEmail(user.email)));
+      const email = user?.email ?? null;
+      setActiveSessionEmail(email);
+      setIsAuthorizedAdmin(Boolean(user && isAllowedAdminEmail(email)));
       setAdminChecked(true);
     };
 
@@ -332,7 +338,9 @@ export default function AdminPortalPage() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
-      setIsAuthorizedAdmin(Boolean(session?.user && isAllowedAdminEmail(session.user.email)));
+      const email = session?.user?.email ?? null;
+      setActiveSessionEmail(email);
+      setIsAuthorizedAdmin(Boolean(session?.user && isAllowedAdminEmail(email)));
       setAdminChecked(true);
     });
 
@@ -341,6 +349,17 @@ export default function AdminPortalPage() {
       authListener.subscription.unsubscribe();
     };
   }, []);
+
+  const handleSignOutCurrentSession = async () => {
+    setSigningOutSession(true);
+    try {
+      await supabase.auth.signOut();
+      setActiveSessionEmail(null);
+      setIsAuthorizedAdmin(false);
+    } finally {
+      setSigningOutSession(false);
+    }
+  };
 
   const notify = (msg: string, isError = false) => {
     if (toastTimerRef.current) {
@@ -1275,13 +1294,30 @@ export default function AdminPortalPage() {
               ? 'ይህ ገጽ ለዋናው አስተዳዳሪ ብቻ ነው፤ ለእርስዎ የተፈቀደ አይደለም። እባክዎ በአስተዳዳሪ መለያ ይግቡ።'
               : 'This page is for the official administrator only, not for you. Please sign in with an official admin account.'}
           </p>
-          <div className="flex items-center justify-center gap-3 pt-2">
+          <div className="bg-slate-900/80 border border-white/15 px-3 py-2 text-xs text-slate-300">
+            <span>{isAm ? 'የአሁኑ ኢሜይል፡ ' : 'Current session: '}</span>
+            <span className="font-mono text-amber-300">
+              {activeSessionEmail || (isAm ? 'ምንም መለያ አልገባም' : 'No active session')}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link
               href="/auth"
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase"
             >
               {isAm ? 'ይግቡ' : 'Sign In'}
             </Link>
+            {activeSessionEmail && (
+              <button
+                type="button"
+                disabled={signingOutSession}
+                onClick={handleSignOutCurrentSession}
+                className="inline-flex items-center gap-1 px-4 py-2 bg-amber-600/90 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-extrabold uppercase cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isAm ? 'ውጣ / ቀይር' : 'Sign Out'}</span>
+              </button>
+            )}
             <Link
               href="/"
               className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white text-xs font-bold uppercase"
@@ -1330,6 +1366,15 @@ export default function AdminPortalPage() {
               {isAm ? 'ዋና ገጽ' : 'Home'}
             </Link>
           </div>
+
+          {activeSessionEmail && (
+            <div className="flex items-center justify-between gap-2 bg-emerald-950/40 border border-emerald-400/25 px-3 py-1.5 text-xs text-emerald-200">
+              <span className="inline-flex items-center gap-1.5 truncate">
+                <UserCheck className="w-3.5 h-3.5 shrink-0 text-emerald-300" />
+                <span className="truncate font-mono">{activeSessionEmail}</span>
+              </span>
+            </div>
+          )}
 
           {lockError && (
             <p className="text-xs font-bold text-red-300 bg-red-950/70 border border-red-500/40 p-2.5">
@@ -1607,6 +1652,16 @@ export default function AdminPortalPage() {
                 <span>{isAm ? 'ቆልፍ' : 'Lock'}</span>
               </button>
 
+              <button
+                type="button"
+                disabled={signingOutSession}
+                onClick={handleSignOutCurrentSession}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5 text-slate-200" />
+                <span className="hidden sm:inline">{isAm ? 'ውጣ' : 'Sign Out'}</span>
+              </button>
+
               <Globe className="w-3.5 h-3.5 text-amber-300 hidden sm:block" />
               <div className="flex items-center gap-1">
                 {SUPPORTED_LANGUAGES.map((item) => (
@@ -1646,6 +1701,19 @@ export default function AdminPortalPage() {
         )}
 
         <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+          {activeSessionEmail && (
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs bg-slate-950/60 border border-white/15 px-3.5 py-2">
+              <span className="inline-flex items-center gap-1.5 text-emerald-300 font-semibold">
+                <UserCheck className="w-4 h-4" />
+                <span>{isAm ? 'የገባው አስተዳዳሪ፡' : 'Signed-in Admin:'}</span>
+                <span className="font-mono text-white">{activeSessionEmail}</span>
+              </span>
+              <span className="text-slate-300">
+                {isAm ? 'የቀጥታ ዳታቤዝ ግንኙነት ንቁ ነው' : 'Live Supabase session active'}
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-b border-white/20 pb-6">
             <div>
               <p className="text-xs font-bold uppercase text-amber-300">
