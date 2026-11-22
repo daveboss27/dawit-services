@@ -34,9 +34,9 @@ import {
 } from 'lucide-react';
 
 const HERO_BACKGROUNDS = [
-  { src: '/hero-1.jpg', alt: 'Dawit Tesfay hero background 1' },
-  { src: '/hero-2.jpg', alt: 'Dawit Tesfay hero background 2' },
-  { src: '/hero-3.jpg', alt: 'Dawit Tesfay hero background 3' },
+  { src: '/hero-1.jpg', alt: 'Dawit Tesfay background 1' },
+  { src: '/hero-2.jpg', alt: 'Dawit Tesfay background 2' },
+  { src: '/hero-3.jpg', alt: 'Dawit Tesfay background 3' },
 ];
 
 export default function HomePage() {
@@ -105,36 +105,110 @@ export default function HomePage() {
   };
 
   return (
-    <div id="home" className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/95 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-3">
-          <Link href="#home" className="font-extrabold tracking-tight text-white text-sm sm:text-lg shrink-0">
-            DAWIT SERVICES
-          </Link>
+    <div id="home" className="relative min-h-screen bg-slate-950/85 text-slate-100 font-sans">
+      {/* LAYER 1: FIXED FULL-VIEWPORT ROTATING PHOTO BACKGROUND (VISIBLE SCROLLING UP OR DOWN) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-slate-950"
+      >
+        {HERO_BACKGROUNDS.map((photo, index) => {
+          const isCurrent = index === activeSlide;
+          return (
+            <img
+              key={photo.src}
+              src={photo.src}
+              alt={photo.alt}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'auto'}
+              decoding={index === 0 ? 'sync' : 'async'}
+              className={`absolute inset-0 h-full w-full object-contain object-center ${
+                prefersReducedMotion
+                  ? 'transition-none'
+                  : 'transition-opacity duration-1000 ease-in-out'
+              } ${isCurrent ? 'opacity-100' : 'opacity-0'}`}
+            />
+          );
+        })}
+      </div>
 
-          <nav className="hidden xl:flex items-center gap-5 text-xs font-semibold text-slate-300">
-            <a href="#home" className="hover:text-white transition">
-              {c.nav.home}
-            </a>
-            <a href="#services" className="hover:text-white transition">
-              {c.nav.services}
-            </a>
-            <a href="#how-it-works" className="hover:text-white transition">
-              {c.nav.howItWorks}
-            </a>
-            <a href="#about" className="hover:text-white transition">
-              {c.nav.about}
-            </a>
-            <a href="#faq" className="hover:text-white transition">
-              {c.nav.faq}
-            </a>
-            <a href="#contact" className="hover:text-white transition">
-              {c.nav.contact}
-            </a>
-          </nav>
+      {/* LAYER 2: FIXED DARK SEMI-TRANSPARENT OVERLAY FOR READABILITY */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-10 bg-slate-950/65"
+      />
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+      {/* LAYER 3: FOREGROUND CONTENT */}
+      <div className="relative z-20">
+        <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/90 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-3">
+            <Link href="#home" className="font-extrabold tracking-tight text-white text-sm sm:text-lg shrink-0">
+              DAWIT SERVICES
+            </Link>
+
+            <nav className="hidden xl:flex items-center gap-5 text-xs font-semibold text-slate-300">
+              <a href="#home" className="hover:text-white transition">
+                {c.nav.home}
+              </a>
+              <a href="#services" className="hover:text-white transition">
+                {c.nav.services}
+              </a>
+              <a href="#how-it-works" className="hover:text-white transition">
+                {c.nav.howItWorks}
+              </a>
+              <a href="#about" className="hover:text-white transition">
+                {c.nav.about}
+              </a>
+              <a href="#faq" className="hover:text-white transition">
+                {c.nav.faq}
+              </a>
+              <a href="#contact" className="hover:text-white transition">
+                {c.nav.contact}
+              </a>
+            </nav>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-800 rounded-xl p-1">
+                {LANGUAGES.map((item) => {
+                  const active = lang === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setLang(item.key)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        active
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {item.native}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openRequestWithService('application')}
+                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer shrink-0"
+              >
+                {c.requestBtn}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="border-b border-blue-500/30 bg-slate-900/80 backdrop-blur-xs px-4 sm:px-6 py-3">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm text-blue-100">
+              <Globe className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
+              <div>
+                <span className="font-extrabold text-blue-300 mr-2">{c.langBannerBadge}:</span>
+                <span>{c.langBannerText}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
               {LANGUAGES.map((item) => {
                 const active = lang === item.key;
                 return (
@@ -142,10 +216,10 @@ export default function HomePage() {
                     key={item.key}
                     type="button"
                     onClick={() => setLang(item.key)}
-                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
                       active
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-300 hover:text-white'
+                        ? 'bg-blue-600 border-blue-300 text-white shadow-sm'
+                        : 'bg-slate-950/85 border-slate-700 text-slate-200 hover:border-blue-400/60'
                     }`}
                   >
                     {item.native}
@@ -153,529 +227,457 @@ export default function HomePage() {
                 );
               })}
             </div>
-
-            <button
-              type="button"
-              onClick={() => openRequestWithService('application')}
-              className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer shrink-0"
-            >
-              {c.requestBtn}
-            </button>
           </div>
         </div>
-      </header>
 
-      <div className="border-b border-blue-500/30 bg-gradient-to-r from-blue-950/75 via-slate-900 to-blue-950/75 px-4 sm:px-6 py-3">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm text-blue-100">
-            <Globe className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
-            <div>
-              <span className="font-extrabold text-blue-300 mr-2">{c.langBannerBadge}:</span>
-              <span>{c.langBannerText}</span>
+        <main>
+          {/* 1. HERO FOREGROUND SECTION */}
+          <section className="border-b border-slate-800/70 min-h-[540px] sm:min-h-[600px] flex items-center py-16 sm:py-24 px-4 sm:px-6">
+            <div className="max-w-6xl w-full mx-auto">
+              <div className="max-w-3xl space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/75 backdrop-blur-xs px-3.5 py-1 text-xs font-semibold text-blue-300">
+                  <span>{c.heroBadge}</span>
+                </div>
+
+                <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight drop-shadow-xs">
+                  {c.heroHeadline}
+                </h1>
+
+                <p className="text-base sm:text-lg text-slate-100/95 leading-relaxed max-w-3xl drop-shadow-xs">
+                  {c.heroSubtext}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => openRequestWithService('application')}
+                    className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-md transition cursor-pointer"
+                  >
+                    {c.requestBtn}
+                  </button>
+                  <a
+                    href="#services"
+                    className="px-5 py-3 rounded-xl bg-slate-900/85 hover:bg-slate-800/95 border border-slate-600/80 text-slate-100 text-sm font-bold backdrop-blur-xs transition"
+                  >
+                    {c.exploreBtn}
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {LANGUAGES.map((item) => {
-              const active = lang === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setLang(item.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                    active
-                      ? 'bg-blue-600 border-blue-300 text-white shadow-sm'
-                      : 'bg-slate-950/85 border-slate-700 text-slate-200 hover:border-blue-400/60'
-                  }`}
-                >
-                  {item.native}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <main>
-        {/* 1. FULL-BLEED HERO WITH UNCROPPED 3-PHOTO CROSSFADE BACKGROUND, OVERLAY, AND FOREGROUND CONTENT */}
-        <section className="relative overflow-hidden border-b border-slate-800/80 min-h-[540px] sm:min-h-[620px] flex items-center py-14 sm:py-20 px-4 sm:px-6">
-          {/* LAYER 1: ROTATING BACKGROUND PHOTO CAROUSEL (FULL IMAGE VISIBLE WITHOUT CROPPING) */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
-          >
-            {HERO_BACKGROUNDS.map((photo, index) => {
-              const isCurrent = index === activeSlide;
-              return (
-                <img
-                  key={photo.src}
-                  src={photo.src}
-                  alt={photo.alt}
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  fetchPriority={index === 0 ? 'high' : 'auto'}
-                  decoding={index === 0 ? 'sync' : 'async'}
-                  className={`absolute inset-0 h-full w-full object-contain object-center ${
-                    prefersReducedMotion
-                      ? 'transition-none'
-                      : 'transition-opacity duration-1000 ease-in-out'
-                  } ${isCurrent ? 'opacity-100' : 'opacity-0'}`}
-                />
-              );
-            })}
-          </div>
-
-          {/* LAYER 2: SUBTLE DARK SEMI-TRANSPARENT OVERLAY FOR READABILITY */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-slate-950/45"
-          />
-
-          {/* LAYER 3: FIXED HERO TEXT & INTERACTIVE BUTTONS */}
-          <div className="relative z-20 max-w-6xl w-full mx-auto">
-            <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/75 backdrop-blur-xs px-3.5 py-1 text-xs font-semibold text-blue-300">
-                <span>{c.heroBadge}</span>
+          {/* 2. ONLY THREE SERVICE CATEGORIES */}
+          <section id="services" className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-6xl mx-auto space-y-8">
+              <div className="max-w-2xl space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.servicesHeading}</h2>
+                <p className="text-sm text-slate-300">{c.servicesSubheading}</p>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight drop-shadow-xs">
-                {c.heroHeadline}
-              </h1>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {c.services.map((service) => (
+                  <article
+                    key={service.key}
+                    className={`rounded-2xl border backdrop-blur-xs p-6 flex flex-col justify-between space-y-5 ${
+                      service.prominent
+                        ? 'lg:col-span-6 bg-slate-900/85 border-blue-500/40'
+                        : 'lg:col-span-3 bg-slate-900/80 border-slate-800'
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800">
+                          {renderServiceIcon(service.key)}
+                        </div>
+                        {service.startingPriceEtb !== null && (
+                          <span className="text-xs font-bold text-blue-300 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg">
+                            {c.startingFromLabel} {service.startingPriceEtb} ETB
+                          </span>
+                        )}
+                      </div>
 
-              <p className="text-base sm:text-lg text-slate-100/95 leading-relaxed max-w-3xl drop-shadow-xs">
-                {c.heroSubtext}
-              </p>
+                      <h3 className="text-xl font-bold text-white">{service.title}</h3>
+                      <p className="text-sm text-slate-300 leading-relaxed">{service.description}</p>
 
-              <div className="flex flex-wrap items-center gap-3.5 pt-2">
+                      <ul className="space-y-1.5 text-xs text-slate-300 pt-1">
+                        {service.highlights.map((item) => (
+                          <li key={item} className="flex items-start gap-2">
+                            <span className="text-blue-400 font-bold">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="space-y-3 pt-4 border-t border-slate-800">
+                      <p className="text-xs text-slate-400 leading-relaxed">{service.disclaimer}</p>
+                      <p className="text-xs text-slate-400 leading-relaxed">{service.feeNote}</p>
+                      <button
+                        type="button"
+                        onClick={() => openRequestWithService(service.key)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        {service.requestButtonLabel}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* 3. HOW THE SERVICE WORKS */}
+          <section id="how-it-works" className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-6xl mx-auto space-y-8">
+              <div className="max-w-2xl space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.howItWorksHeading}</h2>
+                <p className="text-sm text-slate-300">{c.howItWorksSubheading}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {c.howItWorksSteps.map((item) => (
+                  <div
+                    key={item.step}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/80 backdrop-blur-xs p-5 space-y-2.5"
+                  >
+                    <div className="text-xs font-extrabold tracking-wider text-blue-400">{item.step}</div>
+                    <h3 className="text-base font-bold text-white">{item.title}</h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* 4. 200 ETB SERVICE DEPOSIT POLICY */}
+          <section className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-4xl mx-auto rounded-2xl border border-blue-500/40 bg-slate-900/85 backdrop-blur-xs p-6 sm:p-8 space-y-4">
+              <div className="inline-block text-xs font-bold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full">
+                {c.depositBadge}
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.depositHeading}</h2>
+              <div className="space-y-3 text-sm text-slate-200 leading-relaxed">
+                {c.depositParagraphs.map((para) => (
+                  <p key={para}>{para}</p>
+                ))}
+                <p className="font-semibold text-blue-200">{c.depositHighlight}</p>
+              </div>
+              <p className="text-xs text-slate-400 pt-1">{c.depositFlowLabel}</p>
+            </div>
+          </section>
+
+          {/* 6. TRANSPARENT PRICING */}
+          <section className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-5xl mx-auto space-y-6">
+              <div className="space-y-2 max-w-2xl">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.pricingHeading}</h2>
+                <p className="text-sm text-slate-300 leading-relaxed">{c.pricingSubheading}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/85 backdrop-blur-xs p-6 space-y-3">
+                  <h3 className="text-lg font-bold text-white">{c.depositCardTitle}</h3>
+                  <p className="text-sm text-slate-300 leading-relaxed">{c.depositCardText}</p>
+                  <div className="pt-2 border-t border-slate-800 space-y-1.5 text-xs text-slate-400">
+                    {c.services.map((s) => (
+                      <div key={s.key} className="flex items-center justify-between gap-2">
+                        <span>{s.title}</span>
+                        <span className="text-slate-300 font-medium">
+                          {s.startingPriceEtb !== null
+                            ? `${c.startingFromLabel} ${s.startingPriceEtb} ETB`
+                            : c.agreedAfterReviewLabel}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/85 backdrop-blur-xs p-6 space-y-3">
+                  <h3 className="text-lg font-bold text-white">{c.thirdPartyCardTitle}</h3>
+                  <p className="text-sm text-slate-300 leading-relaxed">{c.thirdPartyServiceFeeText}</p>
+                  <p className="text-sm text-slate-300 leading-relaxed">{c.thirdPartyOtherFeesText}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 5. REUSABLE SERVICE REQUEST FORM SECTION */}
+          <section id="request-form" className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-3xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/90 backdrop-blur-xs p-6 sm:p-8 space-y-5">
+              <div className="space-y-1.5">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.formHeading}</h2>
+                <p className="text-xs sm:text-sm text-slate-400">{c.formSubheading}</p>
+              </div>
+              <ServiceRequestForm initialService={activeService} lang={lang} />
+            </div>
+          </section>
+
+          {/* 7. ABOUT DAWIT (NON-REPETITIVE PROFILE DETAILS) */}
+          <section id="about" className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/85 backdrop-blur-xs p-6 sm:p-8 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-400">{c.aboutBadge}</div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.aboutHeading}</h2>
+              <p className="text-sm font-semibold text-blue-300">{c.aboutRole}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{c.aboutBio}</p>
+            </div>
+          </section>
+
+          {/* 8. TRUST SECTION */}
+          <section className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-6xl mx-auto space-y-8">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.trustHeading}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {c.trustPillars.map((pillar, idx) => (
+                  <div
+                    key={pillar.title}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/85 backdrop-blur-xs p-5 space-y-3"
+                  >
+                    <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 w-fit">
+                      {renderTrustIcon(idx)}
+                    </div>
+                    <h3 className="text-base font-bold text-white">{pillar.title}</h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{pillar.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* 9. IMPORTANT DISCLAIMER */}
+          <section className="py-14 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-4xl mx-auto rounded-2xl border border-amber-500/30 bg-slate-900/85 backdrop-blur-xs p-6 space-y-3">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
+                <ShieldCheck className="w-5 h-5 shrink-0" />
+                <span>{c.disclaimerHeading}</span>
+              </div>
+              {c.disclaimerParagraphs.map((para) => (
+                <p key={para} className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {para}
+                </p>
+              ))}
+            </div>
+          </section>
+
+          {/* 13. FAQ */}
+          <section id="faq" className="py-16 px-4 sm:px-6 border-b border-slate-800/70">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.faqHeading}</h2>
+              <div className="space-y-3">
+                {c.faqItems.map((item, idx) => {
+                  const isOpen = openFaqIndex === idx;
+                  return (
+                    <div
+                      key={item.question}
+                      className="rounded-2xl border border-slate-800 bg-slate-900/85 backdrop-blur-xs overflow-hidden"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                        className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 text-sm font-bold text-white hover:bg-slate-800/40 transition cursor-pointer"
+                      >
+                        <span>{item.question}</span>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-blue-400 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-5 pb-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-slate-800/70 pt-3">
+                          {item.answer}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* 11. CONTACT SECTION */}
+          <section id="contact" className="py-16 px-4 sm:px-6">
+            <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/90 backdrop-blur-xs p-6 sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.contactHeading}</h2>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">{c.contactSubheading}</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => openRequestWithService('application')}
-                  className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-md transition cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition w-fit cursor-pointer"
                 >
                   {c.requestBtn}
                 </button>
-                <a
-                  href="#services"
-                  className="px-5 py-3 rounded-xl bg-slate-900/85 hover:bg-slate-800/95 border border-slate-600/80 text-slate-100 text-sm font-bold backdrop-blur-xs transition"
-                >
-                  {c.exploreBtn}
-                </a>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* 2. ONLY THREE SERVICE CATEGORIES */}
-        <section id="services" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <div className="max-w-2xl space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.servicesHeading}</h2>
-              <p className="text-sm text-slate-400">{c.servicesSubheading}</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {c.services.map((service) => (
-                <article
-                  key={service.key}
-                  className={`rounded-2xl border p-6 flex flex-col justify-between space-y-5 ${
-                    service.prominent
-                      ? 'lg:col-span-6 bg-slate-900 border-blue-500/40'
-                      : 'lg:col-span-3 bg-slate-900/75 border-slate-800'
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                        {renderServiceIcon(service.key)}
-                      </div>
-                      {service.startingPriceEtb !== null && (
-                        <span className="text-xs font-bold text-blue-300 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg">
-                          {c.startingFromLabel} {service.startingPriceEtb} ETB
-                        </span>
-                      )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                      <Phone className="w-4 h-4 text-blue-400" />
+                      <span>{c.phoneLabel}</span>
                     </div>
-
-                    <h3 className="text-xl font-bold text-white">{service.title}</h3>
-                    <p className="text-sm text-slate-300 leading-relaxed">{service.description}</p>
-
-                    <ul className="space-y-1.5 text-xs text-slate-300 pt-1">
-                      {service.highlights.map((item) => (
-                        <li key={item} className="flex items-start gap-2">
-                          <span className="text-blue-400 font-bold">•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="space-y-3 pt-4 border-t border-slate-800">
-                    <p className="text-xs text-slate-400 leading-relaxed">{service.disclaimer}</p>
-                    <p className="text-xs text-slate-400 leading-relaxed">{service.feeNote}</p>
                     <button
                       type="button"
-                      onClick={() => openRequestWithService(service.key)}
-                      className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer"
+                      onClick={() => handleCopy('phone', CONTACT_INFO.phone)}
+                      className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
                     >
-                      {service.requestButtonLabel}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 3. HOW THE SERVICE WORKS */}
-        <section id="how-it-works" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-950">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <div className="max-w-2xl space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.howItWorksHeading}</h2>
-              <p className="text-sm text-slate-400">{c.howItWorksSubheading}</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {c.howItWorksSteps.map((item) => (
-                <div
-                  key={item.step}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/75 p-5 space-y-2.5"
-                >
-                  <div className="text-xs font-extrabold tracking-wider text-blue-400">{item.step}</div>
-                  <h3 className="text-base font-bold text-white">{item.title}</h3>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 4. 200 ETB SERVICE DEPOSIT POLICY */}
-        <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
-          <div className="max-w-4xl mx-auto rounded-2xl border border-blue-500/40 bg-slate-900 p-6 sm:p-8 space-y-4">
-            <div className="inline-block text-xs font-bold uppercase tracking-wider text-blue-300 bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-full">
-              {c.depositBadge}
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.depositHeading}</h2>
-            <div className="space-y-3 text-sm text-slate-200 leading-relaxed">
-              {c.depositParagraphs.map((para) => (
-                <p key={para}>{para}</p>
-              ))}
-              <p className="font-semibold text-blue-200">{c.depositHighlight}</p>
-            </div>
-            <p className="text-xs text-slate-400 pt-1">{c.depositFlowLabel}</p>
-          </div>
-        </section>
-
-        {/* 6. TRANSPARENT PRICING */}
-        <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-5xl mx-auto space-y-6">
-            <div className="space-y-2 max-w-2xl">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.pricingHeading}</h2>
-              <p className="text-sm text-slate-300 leading-relaxed">{c.pricingSubheading}</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
-                <h3 className="text-lg font-bold text-white">{c.depositCardTitle}</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">{c.depositCardText}</p>
-                <div className="pt-2 border-t border-slate-800 space-y-1.5 text-xs text-slate-400">
-                  {c.services.map((s) => (
-                    <div key={s.key} className="flex items-center justify-between gap-2">
-                      <span>{s.title}</span>
-                      <span className="text-slate-300 font-medium">
-                        {s.startingPriceEtb !== null
-                          ? `${c.startingFromLabel} ${s.startingPriceEtb} ETB`
-                          : c.agreedAfterReviewLabel}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 space-y-3">
-                <h3 className="text-lg font-bold text-white">{c.thirdPartyCardTitle}</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">{c.thirdPartyServiceFeeText}</p>
-                <p className="text-sm text-slate-300 leading-relaxed">{c.thirdPartyOtherFeesText}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 5. REUSABLE SERVICE REQUEST FORM SECTION */}
-        <section id="request-form" className="py-16 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/30">
-          <div className="max-w-3xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-5">
-            <div className="space-y-1.5">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.formHeading}</h2>
-              <p className="text-xs sm:text-sm text-slate-400">{c.formSubheading}</p>
-            </div>
-            <ServiceRequestForm initialService={activeService} lang={lang} />
-          </div>
-        </section>
-
-        {/* 7. ABOUT DAWIT (NON-REPETITIVE PROFILE DETAILS) */}
-        <section id="about" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/80 p-6 sm:p-8 space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-blue-400">{c.aboutBadge}</div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.aboutHeading}</h2>
-            <p className="text-sm font-semibold text-blue-300">{c.aboutRole}</p>
-            <p className="text-sm text-slate-300 leading-relaxed">{c.aboutBio}</p>
-          </div>
-        </section>
-
-        {/* 8. TRUST SECTION */}
-        <section className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-6xl mx-auto space-y-8">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.trustHeading}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {c.trustPillars.map((pillar, idx) => (
-                <div
-                  key={pillar.title}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3"
-                >
-                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 w-fit">
-                    {renderTrustIcon(idx)}
-                  </div>
-                  <h3 className="text-base font-bold text-white">{pillar.title}</h3>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">{pillar.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 9. IMPORTANT DISCLAIMER */}
-        <section className="py-14 px-4 sm:px-6 border-b border-slate-800/80 bg-slate-900/40">
-          <div className="max-w-4xl mx-auto rounded-2xl border border-amber-500/30 bg-slate-900 p-6 space-y-3">
-            <div className="flex items-center gap-2 text-amber-300 font-bold text-sm">
-              <ShieldCheck className="w-5 h-5 shrink-0" />
-              <span>{c.disclaimerHeading}</span>
-            </div>
-            {c.disclaimerParagraphs.map((para) => (
-              <p key={para} className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                {para}
-              </p>
-            ))}
-          </div>
-        </section>
-
-        {/* 13. FAQ */}
-        <section id="faq" className="py-16 px-4 sm:px-6 border-b border-slate-800/80">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.faqHeading}</h2>
-            <div className="space-y-3">
-              {c.faqItems.map((item, idx) => {
-                const isOpen = openFaqIndex === idx;
-                return (
-                  <div
-                    key={item.question}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                      className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 text-sm font-bold text-white hover:bg-slate-800/40 transition cursor-pointer"
-                    >
-                      <span>{item.question}</span>
-                      {isOpen ? (
-                        <ChevronUp className="w-4 h-4 text-blue-400 shrink-0" />
+                      {copiedField === 'phone' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{c.copiedLabel}</span>
+                        </>
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{c.copyLabel}</span>
+                        </>
                       )}
                     </button>
-                    {isOpen && (
-                      <div className="px-5 pb-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-slate-800/70 pt-3">
-                        {item.answer}
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+                  <a
+                    href={`tel:${CONTACT_INFO.phone}`}
+                    className="block text-slate-100 font-semibold hover:text-blue-300"
+                  >
+                    {CONTACT_INFO.phone}
+                  </a>
+                </div>
 
-        {/* 11. CONTACT SECTION */}
-        <section id="contact" className="py-16 px-4 sm:px-6">
-          <div className="max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{c.contactHeading}</h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1">{c.contactSubheading}</p>
+                <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                      <Send className="w-4 h-4 text-blue-400" />
+                      <span>{c.telegramLabel}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy('telegram', CONTACT_INFO.telegram)}
+                      className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
+                    >
+                      {copiedField === 'telegram' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{c.copiedLabel}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{c.copyLabel}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <a
+                    href={`https://t.me/${CONTACT_INFO.telegram.replace(/^@/, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block text-slate-100 font-semibold hover:text-blue-300"
+                  >
+                    {CONTACT_INFO.telegram}
+                  </a>
+                </div>
+
+                <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                      <Mail className="w-4 h-4 text-blue-400" />
+                      <span>{c.standardEmailLabel}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy('email', CONTACT_INFO.standardEmail)}
+                      className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
+                    >
+                      {copiedField === 'email' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>{c.copiedLabel}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>{c.copyLabel}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <a
+                    href={`mailto:${CONTACT_INFO.standardEmail}`}
+                    className="block text-slate-100 font-semibold hover:text-blue-300 break-all"
+                  >
+                    {CONTACT_INFO.standardEmail}
+                  </a>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => openRequestWithService('application')}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition w-fit cursor-pointer"
+
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/15 p-4 sm:p-5 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold text-amber-300">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{c.vipTitle}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy('vip', CONTACT_INFO.vipEmail)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-950 border border-amber-500/40 text-xs font-semibold text-amber-200 hover:bg-slate-900 inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedField === 'vip' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{c.copiedLabel}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{c.copyLabel}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs sm:text-sm text-amber-100/95 leading-relaxed">
+                  {c.vipTextPrefix}
+                  <a href={`mailto:${CONTACT_INFO.vipEmail}`} className="underline font-bold text-white">
+                    {CONTACT_INFO.vipEmail}
+                  </a>
+                  {c.vipTextSuffix}
+                </p>
+                <p className="text-xs text-amber-200/90 leading-relaxed">{c.vipNote}</p>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer className="border-t border-slate-800 bg-slate-950/90 backdrop-blur py-8 px-4 sm:px-6 text-xs text-slate-400">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <p>{c.footerBrand}</p>
+              <a
+                href="#home"
+                className="inline-flex items-center gap-1 text-slate-300 hover:text-white font-semibold transition"
               >
-                {c.requestBtn}
-              </button>
+                <ArrowUp className="w-3.5 h-3.5" />
+                <span>{c.topLabel}</span>
+              </a>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <Phone className="w-4 h-4 text-blue-400" />
-                    <span>{c.phoneLabel}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy('phone', CONTACT_INFO.phone)}
-                    className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
-                  >
-                    {copiedField === 'phone' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{c.copiedLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{c.copyLabel}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <a
-                  href={`tel:${CONTACT_INFO.phone}`}
-                  className="block text-slate-100 font-semibold hover:text-blue-300"
-                >
-                  {CONTACT_INFO.phone}
-                </a>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <Send className="w-4 h-4 text-blue-400" />
-                    <span>{c.telegramLabel}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy('telegram', CONTACT_INFO.telegram)}
-                    className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
-                  >
-                    {copiedField === 'telegram' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{c.copiedLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{c.copyLabel}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <a
-                  href={`https://t.me/${CONTACT_INFO.telegram.replace(/^@/, '')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-slate-100 font-semibold hover:text-blue-300"
-                >
-                  {CONTACT_INFO.telegram}
-                </a>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <Mail className="w-4 h-4 text-blue-400" />
-                    <span>{c.standardEmailLabel}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy('email', CONTACT_INFO.standardEmail)}
-                    className="text-slate-400 hover:text-white inline-flex items-center gap-1 text-xs cursor-pointer"
-                  >
-                    {copiedField === 'email' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{c.copiedLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>{c.copyLabel}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <a
-                  href={`mailto:${CONTACT_INFO.standardEmail}`}
-                  className="block text-slate-100 font-semibold hover:text-blue-300 break-all"
-                >
-                  {CONTACT_INFO.standardEmail}
-                </a>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-extrabold text-amber-300">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{c.vipTitle}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy('vip', CONTACT_INFO.vipEmail)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-950 border border-amber-500/40 text-xs font-semibold text-amber-200 hover:bg-slate-900 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {copiedField === 'vip' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{c.copiedLabel}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>{c.copyLabel}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <p className="text-xs sm:text-sm text-amber-100/95 leading-relaxed">
-                {c.vipTextPrefix}
-                <a href={`mailto:${CONTACT_INFO.vipEmail}`} className="underline font-bold text-white">
-                  {CONTACT_INFO.vipEmail}
-                </a>
-                {c.vipTextSuffix}
-              </p>
-              <p className="text-xs text-amber-200/90 leading-relaxed">{c.vipNote}</p>
+            <div className="flex flex-wrap items-center gap-6 font-semibold text-slate-300">
+              <Link href="/privacy" className="hover:text-white transition">
+                {c.privacyLink}
+              </Link>
+              <Link href="/terms" className="hover:text-white transition">
+                {c.termsLink}
+              </Link>
+              <Link href="/refund" className="hover:text-white transition">
+                {c.refundLink}
+              </Link>
+              <Link href="/admin" className="hover:text-white transition">
+                {c.adminLink}
+              </Link>
             </div>
           </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-slate-800 bg-slate-950 py-8 px-4 sm:px-6 text-xs text-slate-400">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <p>{c.footerBrand}</p>
-            <a
-              href="#home"
-              className="inline-flex items-center gap-1 text-slate-300 hover:text-white font-semibold transition"
-            >
-              <ArrowUp className="w-3.5 h-3.5" />
-              <span>{c.topLabel}</span>
-            </a>
-          </div>
-          <div className="flex flex-wrap items-center gap-6 font-semibold text-slate-300">
-            <Link href="/privacy" className="hover:text-white transition">
-              {c.privacyLink}
-            </Link>
-            <Link href="/terms" className="hover:text-white transition">
-              {c.termsLink}
-            </Link>
-            <Link href="/refund" className="hover:text-white transition">
-              {c.refundLink}
-            </Link>
-            <Link href="/admin" className="hover:text-white transition">
-              {c.adminLink}
-            </Link>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
