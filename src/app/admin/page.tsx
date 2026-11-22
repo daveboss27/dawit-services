@@ -32,6 +32,9 @@ import {
   KeyRound,
   ImagePlus,
   Video,
+  Pencil,
+  Save,
+  X,
 } from 'lucide-react';
 
 const SEVEN_PHOTOS = [
@@ -85,6 +88,28 @@ function generateSalt(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+function extractMediaFromPost(post: {
+  media_url?: string | null;
+  media_type?: string | null;
+  source_name?: string | null;
+}): { url: string | null; isVideo: boolean } {
+  let url = post.media_url?.trim() || null;
+  if (!url && post.source_name && post.source_name.includes(' | Media: ')) {
+    url = post.source_name.split(' | Media: ')[1]?.trim() || null;
+  }
+  if (!url) return { url: null, isVideo: false };
+
+  const lower = url.toLowerCase();
+  const isVideo =
+    post.media_type === 'video' ||
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.ogg');
+
+  return { url, isVideo };
 }
 
 type AdminTab =
@@ -158,6 +183,12 @@ interface FormSubmissionRow {
   created_at: string;
 }
 
+interface PostTranslationItem {
+  lang_code: string;
+  title: string;
+  body?: string;
+}
+
 interface HubPostRow {
   id: string;
   post_type: string | null;
@@ -165,8 +196,9 @@ interface HubPostRow {
   is_breaking: boolean | null;
   source_name: string | null;
   media_url?: string | null;
+  media_type?: string | null;
   created_at: string;
-  hub_post_translations?: { lang_code: string; title: string }[];
+  hub_post_translations?: PostTranslationItem[];
 }
 
 interface OpportunityRow {
@@ -194,7 +226,7 @@ export default function AdminPortalPage() {
   const [groupIndex, setGroupIndex] = useState(0);
   const [tab, setTab] = useState<AdminTab>('overview');
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; isError?: boolean } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Password Lock State
@@ -217,6 +249,16 @@ export default function AdminPortalPage() {
   const [postMediaUrl, setPostMediaUrl] = useState('');
   const [oppMediaFile, setOppMediaFile] = useState<File | null>(null);
   const [oppMediaUrl, setOppMediaUrl] = useState('');
+
+  // Edit Post State
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editPostTitleAm, setEditPostTitleAm] = useState('');
+  const [editPostTitleEn, setEditPostTitleEn] = useState('');
+  const [editPostBodyAm, setEditPostBodyAm] = useState('');
+  const [editPostBodyEn, setEditPostBodyEn] = useState('');
+  const [editPostMediaUrl, setEditPostMediaUrl] = useState('');
+  const [editPostMediaFile, setEditPostMediaFile] = useState<File | null>(null);
+  const [editPostBreaking, setEditPostBreaking] = useState(false);
 
   // Admin Data Collections
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
@@ -271,9 +313,9 @@ export default function AdminPortalPage() {
 
   const isAm = lang === 'am';
 
-  const notify = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
+  const notify = (msg: string, isError = false) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 4500);
   };
 
   useEffect(() => {
@@ -444,7 +486,7 @@ export default function AdminPortalPage() {
         .upload(filePath, file, { upsert: false });
 
       if (uploadError) {
-        notify(uploadError.message);
+        notify(uploadError.message, true);
         return null;
       }
 
@@ -474,14 +516,8 @@ export default function AdminPortalPage() {
           .from('custom_form_submissions')
           .select('*')
           .order('created_at', { ascending: false }),
-        supabase
-          .from('hub_posts')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('opportunities')
-          .select('*')
-          .order('created_at', { ascending: false }),
+        supabase.from('hub_posts').select('*').order('created_at', { ascending: false }),
+        supabase.from('opportunities').select('*').order('created_at', { ascending: false }),
         supabase.from('content_reports').select('*').order('created_at', { ascending: false }),
       ]);
 
@@ -490,15 +526,14 @@ export default function AdminPortalPage() {
       if (formsRes.data) setForms(formsRes.data as CustomFormRow[]);
       if (subsRes.data) setSubmissions(subsRes.data as FormSubmissionRow[]);
       if (postsRes.data) {
-        // Attach translations cleanly if present
         const { data: trData } = await supabase
           .from('hub_post_translations')
-          .select('post_id, lang_code, title');
-        const grouped: Record<string, { lang_code: string; title: string }[]> = {};
+          .select('post_id, lang_code, title, body');
+        const grouped: Record<string, PostTranslationItem[]> = {};
         for (const row of trData || []) {
-          const r = row as { post_id: string; lang_code: string; title: string };
+          const r = row as { post_id: string; lang_code: string; title: string; body?: string };
           if (!grouped[r.post_id]) grouped[r.post_id] = [];
-          grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title });
+          grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title, body: r.body });
         }
         setPosts(
           (postsRes.data as HubPostRow[]).map((p) => ({
@@ -558,6 +593,8 @@ export default function AdminPortalPage() {
       setFormDeadline('');
       notify(isAm ? 'ቅጹ ተፈጥሯል እና በተጠቃሚ ገጽ ላይ ታይቷል።' : 'Form created and synced.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -569,6 +606,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify(!form.is_published ? 'Visible on UI.' : 'Hidden from UI.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -577,6 +616,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Form removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -588,6 +629,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify(`Submission ${status}.`);
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -596,6 +639,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Submission removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -608,6 +653,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Service request updated.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -616,6 +663,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Service request removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -625,6 +674,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('User updated.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -633,10 +684,12 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('User profile removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
-  // Hub posts actions with photo/video upload
+  // Hub posts actions (Publish, Edit/Modify, Hide/Approve, Delete)
   const handlePublishPost = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -653,11 +706,12 @@ export default function AdminPortalPage() {
       ? 'image'
       : null;
 
+    const cleanSource = postSource.trim() || 'Dawit Hub';
     const fullPayload: Record<string, unknown> = {
       post_type: 'news',
       status: 'published',
       is_breaking: postBreaking,
-      source_name: postSource.trim() || 'Dawit Hub',
+      source_name: cleanSource,
       publish_at: new Date().toISOString(),
     };
     if (finalMediaUrl) {
@@ -672,14 +726,13 @@ export default function AdminPortalPage() {
       .single();
 
     if (error && finalMediaUrl) {
-      // Fallback if media_url column does not exist on hub_posts yet
       const fallback = await supabase
         .from('hub_posts')
         .insert({
           post_type: 'news',
           status: 'published',
           is_breaking: postBreaking,
-          source_name: `${postSource.trim() || 'Dawit Hub'} | Media: ${finalMediaUrl}`,
+          source_name: `${cleanSource} | Media: ${finalMediaUrl}`,
           publish_at: new Date().toISOString(),
         })
         .select('id')
@@ -710,11 +763,95 @@ export default function AdminPortalPage() {
       setPostMediaFile(null);
       setPostMediaUrl('');
       setPostBreaking(false);
-      notify(isAm ? 'ልጥፉ ከሚዲያ ጋር ታትሟል።' : 'Post published with media.');
+      notify(isAm ? 'ልጥፉ ከሚዲያ ጋር ታትሟል።' : 'Post published.');
       loadAllAdminData();
     } else if (error) {
-      notify(error.message);
+      notify(error.message, true);
     }
+  };
+
+  const beginEditPost = (post: HubPostRow) => {
+    const amTr = post.hub_post_translations?.find((t) => t.lang_code === 'am');
+    const enTr = post.hub_post_translations?.find((t) => t.lang_code === 'en');
+    const mediaInfo = extractMediaFromPost(post);
+
+    setEditingPostId(post.id);
+    setEditPostTitleAm(amTr?.title || '');
+    setEditPostTitleEn(enTr?.title || '');
+    setEditPostBodyAm(amTr?.body || '');
+    setEditPostBodyEn(enTr?.body || '');
+    setEditPostMediaUrl(mediaInfo.url || '');
+    setEditPostMediaFile(null);
+    setEditPostBreaking(Boolean(post.is_breaking));
+  };
+
+  const cancelEditPost = () => {
+    setEditingPostId(null);
+    setEditPostMediaFile(null);
+  };
+
+  const handleSaveEditedPost = async (post: HubPostRow) => {
+    let finalMediaUrl = editPostMediaUrl.trim() || null;
+    if (editPostMediaFile) {
+      const uploaded = await uploadMediaToBucket(editPostMediaFile, 'posts');
+      if (!uploaded) return;
+      finalMediaUrl = uploaded;
+    }
+
+    const mediaKind = editPostMediaFile?.type.startsWith('video/')
+      ? 'video'
+      : finalMediaUrl
+      ? 'image'
+      : null;
+
+    const updatePayload: Record<string, unknown> = {
+      is_breaking: editPostBreaking,
+      media_url: finalMediaUrl,
+      media_type: mediaKind,
+    };
+
+    const { error: postErr } = await supabase
+      .from('hub_posts')
+      .update(updatePayload)
+      .eq('id', post.id);
+
+    if (postErr) {
+      notify(postErr.message, true);
+      return;
+    }
+
+    if (editPostTitleAm.trim() || editPostBodyAm.trim()) {
+      await supabase
+        .from('hub_post_translations')
+        .upsert(
+          {
+            post_id: post.id,
+            lang_code: 'am',
+            title: editPostTitleAm.trim() || editPostTitleEn.trim() || 'Untitled',
+            body: editPostBodyAm.trim() || editPostBodyEn.trim() || '',
+          },
+          { onConflict: 'post_id,lang_code' }
+        );
+    }
+
+    if (editPostTitleEn.trim() || editPostBodyEn.trim()) {
+      await supabase
+        .from('hub_post_translations')
+        .upsert(
+          {
+            post_id: post.id,
+            lang_code: 'en',
+            title: editPostTitleEn.trim() || editPostTitleAm.trim() || 'Untitled',
+            body: editPostBodyEn.trim() || editPostBodyAm.trim() || '',
+          },
+          { onConflict: 'post_id,lang_code' }
+        );
+    }
+
+    setEditingPostId(null);
+    setEditPostMediaFile(null);
+    notify(isAm ? 'ልጥፉ ተሻሽሏል።' : 'Post updated.');
+    loadAllAdminData();
   };
 
   const togglePostStatus = async (post: HubPostRow) => {
@@ -726,18 +863,32 @@ export default function AdminPortalPage() {
     if (!error) {
       notify(`Post ${nextStatus}.`);
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
   const deletePost = async (id: string) => {
+    const { error: trErr } = await supabase
+      .from('hub_post_translations')
+      .delete()
+      .eq('post_id', id);
+    if (trErr) {
+      notify(trErr.message, true);
+      return;
+    }
+
     const { error } = await supabase.from('hub_posts').delete().eq('id', id);
     if (!error) {
-      notify('Post removed.');
+      if (editingPostId === id) setEditingPostId(null);
+      notify(isAm ? 'ልጥፉ ተወግዷል።' : 'Post deleted.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
-  // Opportunities actions with photo/video upload
+  // Opportunities actions
   const handlePublishOpportunity = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -811,7 +962,7 @@ export default function AdminPortalPage() {
       notify(isAm ? 'እድሉ ተጨምሯል።' : 'Opportunity published.');
       loadAllAdminData();
     } else if (error) {
-      notify(error.message);
+      notify(error.message, true);
     }
   };
 
@@ -823,6 +974,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify(!opp.is_active ? 'Opportunity approved & active.' : 'Opportunity paused.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -831,6 +984,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Opportunity removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -843,6 +998,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify(`Report ${status}.`);
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -851,6 +1008,8 @@ export default function AdminPortalPage() {
     if (!error) {
       notify('Report removed.');
       loadAllAdminData();
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -869,6 +1028,8 @@ export default function AdminPortalPage() {
       setNotifTitle('');
       setNotifBody('');
       notify('Notification broadcast sent.');
+    } else {
+      notify(error.message, true);
     }
   };
 
@@ -977,7 +1138,6 @@ export default function AdminPortalPage() {
     return null;
   }
 
-  // LOCK / SETUP / CHANGE / FORGOT PASSWORD SCREEN
   if (!isUnlocked) {
     return (
       <div className="relative min-h-screen text-white flex items-center justify-center px-4 py-10">
@@ -1236,7 +1396,6 @@ export default function AdminPortalPage() {
     );
   }
 
-  // UNLOCKED ADMIN PORTAL
   return (
     <div className="relative min-h-screen text-white">
       {renderPhotoBackdrop()}
@@ -1308,10 +1467,20 @@ export default function AdminPortalPage() {
         </header>
 
         {toast && (
-          <div className="bg-emerald-900/90 border-b border-emerald-400/30 text-white text-xs font-bold px-4 py-2 text-center">
+          <div
+            className={`${
+              toast.isError
+                ? 'bg-red-900/95 border-red-400/40'
+                : 'bg-emerald-900/90 border-emerald-400/30'
+            } border-b text-white text-xs font-bold px-4 py-2 text-center`}
+          >
             <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{toast}</span>
+              {toast.isError ? (
+                <XCircle className="w-4 h-4" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              <span>{toast.msg}</span>
             </span>
           </div>
         )}
@@ -1834,7 +2003,9 @@ export default function AdminPortalPage() {
                 <div className="space-y-8">
                   <form onSubmit={handlePublishPost} className="space-y-3 max-w-3xl">
                     <h3 className="text-lg font-black text-white">
-                      {isAm ? 'አዲስ ልጥፍ / ዜና (ከፎቶ ወይም ቪዲዮ ጋር)' : 'Publish Hub Post (Photo or Video)'}
+                      {isAm
+                        ? 'አዲስ ልጥፍ / ዜና (ከፎቶ ወይም ቪዲዮ ጋር)'
+                        : 'Publish Hub Post (Photo or Video)'}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <input
@@ -1930,45 +2101,171 @@ export default function AdminPortalPage() {
                     </div>
                   </form>
 
-                  <div className="divide-y divide-white/15 border-t border-white/20 pt-4">
-                    {posts.map((p) => (
-                      <div
-                        key={p.id}
-                        className="py-3 flex flex-wrap items-center justify-between gap-2 text-xs"
-                      >
-                        <div>
-                          <p className="font-bold text-sm text-white">
-                            {p.hub_post_translations?.[0]?.title || p.id}
-                          </p>
-                          <p className="text-slate-300">
-                            status: {p.status || 'draft'}
-                            {p.media_url ? ` • media attached` : ''}
-                          </p>
+                  <div className="divide-y divide-white/15 border-t border-white/20 pt-4 space-y-4">
+                    {posts.map((p) => {
+                      const mediaInfo = extractMediaFromPost(p);
+                      const amTr = p.hub_post_translations?.find((t) => t.lang_code === 'am');
+                      const enTr = p.hub_post_translations?.find((t) => t.lang_code === 'en');
+                      const displayTitle =
+                        (isAm ? amTr?.title || enTr?.title : enTr?.title || amTr?.title) || p.id;
+                      const displayBody =
+                        (isAm ? amTr?.body || enTr?.body : enTr?.body || amTr?.body) || '';
+                      const isEditing = editingPostId === p.id;
+
+                      return (
+                        <div key={p.id} className="pt-4 space-y-3 text-xs">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="space-y-1 max-w-2xl">
+                              <p className="font-bold text-sm text-white">{displayTitle}</p>
+                              <p className="text-slate-300">
+                                status: {p.status || 'draft'}
+                                {mediaInfo.url ? ` • ${mediaInfo.isVideo ? 'video' : 'photo'}` : ''}
+                              </p>
+                              {displayBody && (
+                                <p className="text-xs text-slate-200 whitespace-pre-line">
+                                  {displayBody}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => (isEditing ? cancelEditPost() : beginEditPost(p))}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-amber-600/90 hover:bg-amber-600 text-white font-bold cursor-pointer"
+                              >
+                                {isEditing ? (
+                                  <>
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>{isAm ? 'ሰርዝ' : 'Cancel'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    <span>{isAm ? 'አስተካክል' : 'Edit'}</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => togglePostStatus(p)}
+                                className="px-3 py-1 bg-white/10 border border-white/25 font-bold cursor-pointer"
+                              >
+                                {p.status === 'published'
+                                  ? isAm
+                                    ? 'ደብቅ / Draft'
+                                    : 'Hide'
+                                  : isAm
+                                  ? 'አጽድቅ / Publish'
+                                  : 'Approve'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => deletePost(p.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>{isAm ? 'ሰርዝ / Delete' : 'Delete'}</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {mediaInfo.url && (
+                            <div className="max-w-md border border-white/20 bg-slate-950/70 p-2">
+                              {mediaInfo.isVideo ? (
+                                <video
+                                  src={mediaInfo.url}
+                                  controls
+                                  className="w-full max-h-64 object-contain"
+                                />
+                              ) : (
+                                <img
+                                  src={mediaInfo.url}
+                                  alt={displayTitle}
+                                  className="w-full max-h-64 object-contain"
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {isEditing && (
+                            <div className="border border-amber-300/40 bg-slate-950/80 p-4 space-y-3 max-w-3xl">
+                              <p className="font-black text-amber-300 uppercase">
+                                {isAm ? 'ልጥፉን ማስተካከያ' : 'Modify Post'}
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input
+                                  type="text"
+                                  value={editPostTitleAm}
+                                  onChange={(e) => setEditPostTitleAm(e.target.value)}
+                                  placeholder="ርዕስ (አማርኛ)"
+                                  className="bg-slate-900 border border-white/25 px-3 py-2 text-xs text-white"
+                                />
+                                <input
+                                  type="text"
+                                  value={editPostTitleEn}
+                                  onChange={(e) => setEditPostTitleEn(e.target.value)}
+                                  placeholder="Title (English)"
+                                  className="bg-slate-900 border border-white/25 px-3 py-2 text-xs text-white"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <textarea
+                                  rows={2}
+                                  value={editPostBodyAm}
+                                  onChange={(e) => setEditPostBodyAm(e.target.value)}
+                                  placeholder="ጽሁፍ (አማርኛ)"
+                                  className="bg-slate-900 border border-white/25 px-3 py-2 text-xs text-white"
+                                />
+                                <textarea
+                                  rows={2}
+                                  value={editPostBodyEn}
+                                  onChange={(e) => setEditPostBodyEn(e.target.value)}
+                                  placeholder="Body (English)"
+                                  className="bg-slate-900 border border-white/25 px-3 py-2 text-xs text-white"
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input
+                                  type="url"
+                                  value={editPostMediaUrl}
+                                  onChange={(e) => setEditPostMediaUrl(e.target.value)}
+                                  placeholder="Media URL"
+                                  className="bg-slate-900 border border-white/25 px-3 py-2 text-xs text-white"
+                                />
+                                <input
+                                  type="file"
+                                  accept="image/*,video/*"
+                                  onChange={(e) => setEditPostMediaFile(e.target.files?.[0] || null)}
+                                  className="bg-slate-900 border border-white/25 px-3 py-1.5 text-xs text-white file:mr-2 file:py-1 file:px-2 file:border-0 file:bg-red-600 file:text-white file:font-bold"
+                                />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-xs font-bold">
+                                  <input
+                                    type="checkbox"
+                                    checked={editPostBreaking}
+                                    onChange={(e) => setEditPostBreaking(e.target.checked)}
+                                  />
+                                  <span>{isAm ? 'ዋና ማስታወቂያ' : 'Breaking'}</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  disabled={uploadingMedia}
+                                  onClick={() => handleSaveEditedPost(p)}
+                                  className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold uppercase cursor-pointer"
+                                >
+                                  <Save className="w-3.5 h-3.5" />
+                                  <span>{isAm ? 'ለውጡን አስቀምጥ' : 'Save Changes'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => togglePostStatus(p)}
-                            className="px-3 py-1 bg-white/10 border border-white/25 font-bold cursor-pointer"
-                          >
-                            {p.status === 'published'
-                              ? isAm
-                                ? 'ደብቅ / Draft'
-                                : 'Hide'
-                              : isAm
-                              ? 'አጽድቅ / Publish'
-                              : 'Approve'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deletePost(p.id)}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
-                          >
-                            {isAm ? 'አስወግድ' : 'Remove'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
