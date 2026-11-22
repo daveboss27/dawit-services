@@ -34,9 +34,21 @@ import {
 } from 'lucide-react';
 
 const HERO_BACKGROUNDS = [
-  { src: '/hero-1.jpg', alt: 'Dawit Tesfay background 1' },
-  { src: '/hero-2.jpg', alt: 'Dawit Tesfay background 2' },
-  { src: '/hero-3.jpg', alt: 'Dawit Tesfay background 3' },
+  { src: '/hero-1.jpg', alt: 'Dawit Tesfay photo 1' },
+  { src: '/hero-2.jpg', alt: 'Dawit Tesfay photo 2' },
+  { src: '/hero-3.jpg', alt: 'Dawit Tesfay photo 3' },
+  { src: '/hero-4.jpg', alt: 'Dawit Tesfay photo 4' },
+  { src: '/hero-5.jpg', alt: 'Dawit Tesfay photo 5' },
+  { src: '/hero-6.jpg', alt: 'Dawit Tesfay photo 6' },
+  { src: '/hero-7.jpg', alt: 'Dawit Tesfay photo 7' },
+];
+
+const SLIDE_GROUPS = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 0, 1],
+  [2, 3, 4],
+  [5, 6, 0],
 ];
 
 export default function HomePage() {
@@ -46,7 +58,7 @@ export default function HomePage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [activeSlideGroup, setActiveSlideGroup] = useState(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const c = SITE_CONTENT[lang];
@@ -59,7 +71,7 @@ export default function HomePage() {
     const handleChange = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches);
       if (event.matches) {
-        setActiveSlide(0);
+        setActiveSlideGroup(0);
       }
     };
 
@@ -70,7 +82,7 @@ export default function HomePage() {
   useEffect(() => {
     if (prefersReducedMotion) return;
     const intervalId = window.setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % HERO_BACKGROUNDS.length);
+      setActiveSlideGroup((prev) => (prev + 1) % SLIDE_GROUPS.length);
     }, 5500);
 
     return () => window.clearInterval(intervalId);
@@ -106,27 +118,44 @@ export default function HomePage() {
 
   return (
     <div id="home" className="relative min-h-screen bg-slate-950/85 text-slate-100 font-sans">
-      {/* LAYER 1: FIXED FULL-VIEWPORT ROTATING PHOTO BACKGROUND (VISIBLE SCROLLING UP OR DOWN) */}
+      {/* LAYER 1: FIXED FULL-WIDTH MULTI-PANEL PHOTO BACKGROUND (VISIBLE SCROLLING UP OR DOWN, UNCROPPED) */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-slate-950"
       >
-        {HERO_BACKGROUNDS.map((photo, index) => {
-          const isCurrent = index === activeSlide;
+        {SLIDE_GROUPS.map((groupIndices, groupIdx) => {
+          const isCurrentGroup = groupIdx === activeSlideGroup;
           return (
-            <img
-              key={photo.src}
-              src={photo.src}
-              alt={photo.alt}
-              loading={index === 0 ? 'eager' : 'lazy'}
-              fetchPriority={index === 0 ? 'high' : 'auto'}
-              decoding={index === 0 ? 'sync' : 'async'}
-              className={`absolute inset-0 h-full w-full object-contain object-center ${
+            <div
+              key={groupIdx}
+              className={`absolute inset-0 grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-4 items-center ${
                 prefersReducedMotion
                   ? 'transition-none'
                   : 'transition-opacity duration-1000 ease-in-out'
-              } ${isCurrent ? 'opacity-100' : 'opacity-0'}`}
-            />
+              } ${isCurrentGroup ? 'opacity-100' : 'opacity-0'}`}
+            >
+              {groupIndices.map((photoIdx, slotIdx) => {
+                const photo = HERO_BACKGROUNDS[photoIdx];
+                const isPrimaryMobile = slotIdx === 0;
+                return (
+                  <div
+                    key={`${groupIdx}-${slotIdx}-${photo.src}`}
+                    className={`h-full w-full flex items-center justify-center rounded-2xl bg-slate-900/70 overflow-hidden ${
+                      isPrimaryMobile ? 'flex' : 'hidden md:flex'
+                    }`}
+                  >
+                    <img
+                      src={photo.src}
+                      alt={photo.alt}
+                      loading={groupIdx === 0 && slotIdx === 0 ? 'eager' : 'lazy'}
+                      fetchPriority={groupIdx === 0 && slotIdx === 0 ? 'high' : 'auto'}
+                      decoding={groupIdx === 0 && slotIdx === 0 ? 'sync' : 'async'}
+                      className="max-h-full max-w-full h-full w-full object-contain object-center"
+                    />
+                  </div>
+                );
+              })}
+            </div>
           );
         })}
       </div>
