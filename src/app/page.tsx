@@ -39,8 +39,29 @@ interface HubPostPreview {
   id: string;
   post_type: string | null;
   is_breaking: boolean | null;
+  source_name?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   created_at: string;
   hub_post_translations?: { lang_code: string; title: string; summary?: string | null }[];
+}
+
+function getHomePostMedia(post: HubPostPreview): { url: string | null; isVideo: boolean } {
+  let url = post.media_url?.trim() || null;
+  if (!url && post.source_name && post.source_name.includes(' | Media: ')) {
+    url = post.source_name.split(' | Media: ')[1]?.trim() || null;
+  }
+  if (!url) return { url: null, isVideo: false };
+
+  const lower = url.toLowerCase();
+  const isVideo =
+    post.media_type === 'video' ||
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.ogg');
+
+  return { url, isVideo };
 }
 
 interface CustomFormField {
@@ -127,7 +148,7 @@ export default function HomePage() {
     const [postsRes, formsRes] = await Promise.all([
       supabase
         .from('hub_posts')
-        .select('id, post_type, is_breaking, created_at, hub_post_translations(lang_code, title, summary)')
+        .select('*')
         .eq('status', 'published')
         .order('created_at', { ascending: false })
         .limit(6),
@@ -138,7 +159,24 @@ export default function HomePage() {
         .order('created_at', { ascending: false }),
     ]);
 
-    if (postsRes.data) setPosts(postsRes.data as HubPostPreview[]);
+    if (postsRes.data) {
+      const { data: trData } = await supabase
+        .from('hub_post_translations')
+        .select('post_id, lang_code, title, summary');
+      const grouped: Record<string, { lang_code: string; title: string; summary?: string | null }[]> =
+        {};
+      for (const row of trData || []) {
+        const r = row as { post_id: string; lang_code: string; title: string; summary?: string | null };
+        if (!grouped[r.post_id]) grouped[r.post_id] = [];
+        grouped[r.post_id].push({ lang_code: r.lang_code, title: r.title, summary: r.summary });
+      }
+      setPosts(
+        (postsRes.data as HubPostPreview[]).map((p) => ({
+          ...p,
+          hub_post_translations: grouped[p.id] || [],
+        }))
+      );
+    }
     if (formsRes.data) setLiveForms(formsRes.data as CustomFormItem[]);
   }, []);
 
@@ -473,16 +511,36 @@ export default function HomePage() {
               </div>
 
               {announcements.length > 0 && (
-                <div className="border-l-2 border-red-500 pl-4 space-y-2">
+                <div className="border-l-2 border-red-500 pl-4 space-y-3">
                   <p className="text-xs font-extrabold uppercase text-red-400">
                     {isAm ? 'ዋና ማስታወቂያ' : 'Announcement'}
                   </p>
                   {announcements.slice(0, 2).map((a) => {
                     const text = pickPostText(a);
+                    const media = getHomePostMedia(a);
                     return (
-                      <div key={a.id} className="space-y-1">
+                      <div key={a.id} className="space-y-2">
                         <h3 className="text-lg font-black text-white">{text.title}</h3>
                         {text.summary && <p className="text-sm text-slate-200">{text.summary}</p>}
+                        {media.url && (
+                          <div className="max-w-md border border-white/20 bg-slate-950/70 p-2">
+                            {media.isVideo ? (
+                              <video
+                                src={media.url}
+                                controls
+                                playsInline
+                                preload="metadata"
+                                className="w-full max-h-64 object-contain"
+                              />
+                            ) : (
+                              <img
+                                src={media.url}
+                                alt={text.title}
+                                className="w-full max-h-64 object-contain"
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -501,14 +559,37 @@ export default function HomePage() {
                       : 'Recent news and announcements appear here and in Dawit Hub.'}
                   </p>
                 ) : (
-                  <ul className="space-y-2.5 text-sm text-slate-100">
-                    {generalNews.slice(0, 4).map((n) => (
-                      <li key={n.id} className="border-b border-white/10 pb-2">
-                        <Link href="/hub" className="hover:text-amber-300 font-semibold">
-                          {pickPostText(n).title}
-                        </Link>
-                      </li>
-                    ))}
+                  <ul className="space-y-3 text-sm text-slate-100">
+                    {generalNews.slice(0, 4).map((n) => {
+                      const text = pickPostText(n);
+                      const media = getHomePostMedia(n);
+                      return (
+                        <li key={n.id} className="border-b border-white/10 pb-3 space-y-2">
+                          <Link href="/hub" className="hover:text-amber-300 font-semibold block">
+                            {text.title}
+                          </Link>
+                          {media.url && (
+                            <div className="max-w-sm border border-white/20 bg-slate-950/70 p-1.5">
+                              {media.isVideo ? (
+                                <video
+                                  src={media.url}
+                                  controls
+                                  playsInline
+                                  preload="metadata"
+                                  className="w-full max-h-52 object-contain"
+                                />
+                              ) : (
+                                <img
+                                  src={media.url}
+                                  alt={text.title}
+                                  className="w-full max-h-52 object-contain"
+                                />
+                              )}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

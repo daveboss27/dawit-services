@@ -43,9 +43,29 @@ interface HubPostItem {
   is_breaking: boolean | null;
   source_name: string | null;
   source_url: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   publish_at: string | null;
   created_at: string;
   hub_post_translations?: HubPostTranslation[];
+}
+
+function getHubPostMedia(post: HubPostItem): { url: string | null; isVideo: boolean } {
+  let url = post.media_url?.trim() || null;
+  if (!url && post.source_name && post.source_name.includes(' | Media: ')) {
+    url = post.source_name.split(' | Media: ')[1]?.trim() || null;
+  }
+  if (!url) return { url: null, isVideo: false };
+
+  const lower = url.toLowerCase();
+  const isVideo =
+    post.media_type === 'video' ||
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.ogg');
+
+  return { url, isVideo };
 }
 
 interface OpportunityTranslation {
@@ -258,9 +278,7 @@ export default function HubPage() {
           .order('sort_order'),
         supabase
           .from('hub_posts')
-          .select(
-            'id, category_id, post_type, status, verification_label, is_breaking, source_name, source_url, publish_at, created_at, hub_post_translations(lang_code, title, summary, body, is_verified_translation)'
-          )
+          .select('*')
           .eq('status', 'published')
           .order('created_at', { ascending: false }),
         supabase
@@ -279,7 +297,27 @@ export default function HubPage() {
         setCategories(catsRes.data as HubCategory[]);
       }
       if (!postsRes.error && postsRes.data) {
-        setPosts(postsRes.data as HubPostItem[]);
+        const { data: trData } = await supabase
+          .from('hub_post_translations')
+          .select('post_id, lang_code, title, summary, body, is_verified_translation');
+        const grouped: Record<string, HubPostTranslation[]> = {};
+        for (const row of trData || []) {
+          const r = row as HubPostTranslation & { post_id: string };
+          if (!grouped[r.post_id]) grouped[r.post_id] = [];
+          grouped[r.post_id].push({
+            lang_code: r.lang_code,
+            title: r.title,
+            summary: r.summary,
+            body: r.body,
+            is_verified_translation: r.is_verified_translation,
+          });
+        }
+        setPosts(
+          (postsRes.data as HubPostItem[]).map((p) => ({
+            ...p,
+            hub_post_translations: grouped[p.id] || [],
+          }))
+        );
       }
       if (!oppsRes.error && oppsRes.data) {
         setOpportunities(oppsRes.data as OpportunityItem[]);
@@ -544,6 +582,7 @@ export default function HubPage() {
               >
                 {leadPost && (() => {
                   const tr = pickTranslation(leadPost.hub_post_translations, lang);
+                  const media = getHubPostMedia(leadPost);
                   const expanded = !!expandedPosts[leadPost.id];
                   const body = tr?.body || '';
                   const shortBody = body.length > 340 ? `${body.slice(0, 340).trim()}...` : body;
@@ -578,6 +617,26 @@ export default function HubPage() {
                         <p className="text-base font-semibold text-slate-800 leading-relaxed">
                           {tr.summary}
                         </p>
+                      )}
+
+                      {media.url && (
+                        <div className="border border-slate-200 bg-slate-950 p-2">
+                          {media.isVideo ? (
+                            <video
+                              src={media.url}
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="w-full max-h-96 object-contain"
+                            />
+                          ) : (
+                            <img
+                              src={media.url}
+                              alt={tr?.title || 'Post media'}
+                              className="w-full max-h-96 object-contain"
+                            />
+                          )}
+                        </div>
                       )}
 
                       {body && (
@@ -629,6 +688,7 @@ export default function HubPage() {
                     <div className="divide-y divide-slate-200 bg-white border border-slate-200">
                       {secondaryPosts.map((post) => {
                         const tr = pickTranslation(post.hub_post_translations, lang);
+                        const media = getHubPostMedia(post);
                         const expanded = !!expandedPosts[post.id];
                         const body = tr?.body || '';
                         const shortBody =
@@ -653,6 +713,26 @@ export default function HubPage() {
 
                             {tr?.summary && (
                               <p className="text-sm font-medium text-slate-700">{tr.summary}</p>
+                            )}
+
+                            {media.url && (
+                              <div className="border border-slate-200 bg-slate-950 p-2">
+                                {media.isVideo ? (
+                                  <video
+                                    src={media.url}
+                                    controls
+                                    playsInline
+                                    preload="metadata"
+                                    className="w-full max-h-80 object-contain"
+                                  />
+                                ) : (
+                                  <img
+                                    src={media.url}
+                                    alt={tr?.title || 'Post media'}
+                                    className="w-full max-h-80 object-contain"
+                                  />
+                                )}
+                              </div>
                             )}
 
                             {body && (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import {
@@ -227,6 +227,7 @@ export default function AdminPortalPage() {
   const [tab, setTab] = useState<AdminTab>('overview');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; isError?: boolean } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Password Lock State
@@ -314,9 +315,22 @@ export default function AdminPortalPage() {
   const isAm = lang === 'am';
 
   const notify = (msg: string, isError = false) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToast({ msg, isError });
-    setTimeout(() => setToast(null), 4500);
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -571,7 +585,6 @@ export default function AdminPortalPage() {
     }
   }, [isUnlocked, loadAllAdminData]);
 
-  // Custom forms & submissions actions
   const handleCreateCustomForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from('custom_forms').insert({
@@ -644,7 +657,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Service request actions
   const updateServiceRequest = async (id: string, patch: Record<string, unknown>) => {
     const { error } = await supabase
       .from('service_requests')
@@ -668,7 +680,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // User actions
   const updateUserProfile = async (id: string, patch: Partial<ProfileRow>) => {
     const { error } = await supabase.from('profiles').update(patch).eq('id', id);
     if (!error) {
@@ -689,7 +700,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Hub posts actions (Publish, Edit/Modify, Hide/Approve, Delete)
   const handlePublishPost = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -888,7 +898,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Opportunities actions
   const handlePublishOpportunity = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -989,7 +998,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Reports actions
   const updateReportStatus = async (id: string, status: 'resolved' | 'dismissed') => {
     const { error } = await supabase
       .from('content_reports')
@@ -1013,7 +1021,6 @@ export default function AdminPortalPage() {
     }
   };
 
-  // Broadcast notification
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from('notifications').insert({
