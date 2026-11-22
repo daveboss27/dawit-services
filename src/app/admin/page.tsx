@@ -1268,12 +1268,12 @@ export default function AdminPortalPage() {
         {renderPhotoBackdrop()}
         <div className="relative z-10 w-full max-w-md bg-slate-950/85 backdrop-blur-md border border-red-500/40 p-6 sm:p-8 space-y-4 text-center">
           <h1 className="text-xl font-black text-red-400">
-            {isAm ? 'የአስተዳዳሪ ፈቃድ ብቻ' : 'Admin Access Only'}
+            {isAm ? 'ለአስተዳዳሪ ብቻ' : 'Admin Official Only'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
             {isAm
-              ? 'ይህ የአስተዳዳሪ ገጽ ለ dawittesfay2724@gmail.com ብቻ የተፈቀደ ነው። እባክዎ በአስተዳዳሪ መለያዎ ይግቡ።'
-              : 'This control panel is restricted exclusively to dawittesfay2724@gmail.com. Please sign in with the authorized admin account.'}
+              ? 'ይህ ገጽ ለዋናው አስተዳዳሪ ብቻ ነው፤ ለእርስዎ የተፈቀደ አይደለም። እባክዎ በአስተዳዳሪ መለያ ይግቡ።'
+              : 'This page is for the official administrator only, not for you. Please sign in with an official admin account.'}
           </p>
           <div className="flex items-center justify-center gap-3 pt-2">
             <Link
