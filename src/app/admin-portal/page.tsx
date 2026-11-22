@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { isAllowedAdminEmail } from '../../lib/adminGuard';
-import { supabase } from '../../lib/supabase';
+import { isAllowedAdminEmail } from '../lib/adminGuard';
+import { supabase } from '../lib/supabase';
 import { ShieldCheck, LogIn, LogOut, ArrowRight, Home } from 'lucide-react';
 
 export default function DedicatedAdminPortalEntryPage() {
