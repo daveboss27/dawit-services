@@ -107,12 +107,12 @@ export default function HomePage() {
   return (
     <div id="home" className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/95 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <Link href="#home" className="font-extrabold tracking-tight text-white text-base sm:text-lg shrink-0">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-3">
+          <Link href="#home" className="font-extrabold tracking-tight text-white text-sm sm:text-lg shrink-0">
             DAWIT SERVICES
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-5 text-xs font-semibold text-slate-300">
+          <nav className="hidden xl:flex items-center gap-5 text-xs font-semibold text-slate-300">
             <a href="#home" className="hover:text-white transition">
               {c.nav.home}
             </a>
@@ -133,13 +133,35 @@ export default function HomePage() {
             </a>
           </nav>
 
-          <button
-            type="button"
-            onClick={() => openRequestWithService('application')}
-            className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer shrink-0"
-          >
-            {c.requestBtn}
-          </button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+              {LANGUAGES.map((item) => {
+                const active = lang === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setLang(item.key)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                      active
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {item.native}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => openRequestWithService('application')}
+              className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer shrink-0"
+            >
+              {c.requestBtn}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -176,10 +198,13 @@ export default function HomePage() {
       </div>
 
       <main>
-        {/* 1. FULL-BLEED HERO WITH 3-PHOTO CROSSFADE BACKGROUND, OVERLAY, AND FOREGROUND CONTENT */}
-        <section className="relative overflow-hidden border-b border-slate-800/80 min-h-[480px] sm:min-h-[540px] flex items-center py-16 sm:py-24 px-4 sm:px-6">
-          {/* LAYER 1: ROTATING BACKGROUND PHOTO CAROUSEL (ONE ACTIVE AT A TIME, SMOOTH FADE) */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-slate-950">
+        {/* 1. FULL-BLEED HERO WITH UNCROPPED 3-PHOTO CROSSFADE BACKGROUND, OVERLAY, AND FOREGROUND CONTENT */}
+        <section className="relative overflow-hidden border-b border-slate-800/80 min-h-[540px] sm:min-h-[620px] flex items-center py-14 sm:py-20 px-4 sm:px-6">
+          {/* LAYER 1: ROTATING BACKGROUND PHOTO CAROUSEL (FULL IMAGE VISIBLE WITHOUT CROPPING) */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+          >
             {HERO_BACKGROUNDS.map((photo, index) => {
               const isCurrent = index === activeSlide;
               return (
@@ -190,7 +215,7 @@ export default function HomePage() {
                   loading={index === 0 ? 'eager' : 'lazy'}
                   fetchPriority={index === 0 ? 'high' : 'auto'}
                   decoding={index === 0 ? 'sync' : 'async'}
-                  className={`absolute inset-0 h-full w-full object-cover object-top sm:object-[50%_20%] ${
+                  className={`absolute inset-0 h-full w-full object-contain object-center ${
                     prefersReducedMotion
                       ? 'transition-none'
                       : 'transition-opacity duration-1000 ease-in-out'
@@ -203,13 +228,13 @@ export default function HomePage() {
           {/* LAYER 2: SUBTLE DARK SEMI-TRANSPARENT OVERLAY FOR READABILITY */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/65 to-slate-950/50"
+            className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/55 to-slate-950/45"
           />
 
           {/* LAYER 3: FIXED HERO TEXT & INTERACTIVE BUTTONS */}
           <div className="relative z-20 max-w-6xl w-full mx-auto">
             <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/65 backdrop-blur-xs px-3.5 py-1 text-xs font-semibold text-blue-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/40 bg-slate-950/75 backdrop-blur-xs px-3.5 py-1 text-xs font-semibold text-blue-300">
                 <span>{c.heroBadge}</span>
               </div>
 
